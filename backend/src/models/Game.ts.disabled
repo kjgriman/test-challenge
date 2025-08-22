@@ -1,0 +1,412 @@
+import mongoose, { Document, Schema } from 'mongoose';
+
+// Enumeración de estados del juego
+export enum GameStatus {
+  WAITING = 'waiting',
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled'
+}
+
+// Enumeración de tipos de juego
+export enum GameType {
+  PRONUNCIATION_PRACTICE = 'pronunciation_practice',
+  WORD_RECOGNITION = 'word_recognition',
+  SOUND_MATCHING = 'sound_matching',
+  LANGUAGE_COMPREHENSION = 'language_comprehension'
+}
+
+// Enumeración de dificultades
+export enum GameDifficulty {
+  EASY = 'easy',
+  MEDIUM = 'medium',
+  HARD = 'hard'
+}
+
+// Interfaz para el estado del juego
+export interface IGameState {
+  currentWord: string;
+  currentPlayer: 'slp' | 'child';
+  turnNumber: number;
+  maxTurns: number;
+  score: {
+    slp: number;
+    child: number;
+  };
+  currentRound: number;
+  totalRounds: number;
+  timeRemaining: number; // en segundos
+  isPaused: boolean;
+}
+
+// Interfaz para acciones del juego
+export interface IGameAction {
+  playerId: mongoose.Types.ObjectId;
+  playerType: 'slp' | 'child';
+  action: 'word_pronounced' | 'evaluation_given' | 'turn_skipped' | 'game_paused';
+  timestamp: Date;
+  data?: {
+    word?: string;
+    pronunciation?: 'correct' | 'incorrect' | 'partial';
+    notes?: string;
+    timeSpent?: number;
+  };
+}
+
+// Interfaz para el documento del juego
+export interface IGame extends Document {
+  sessionId: mongoose.Types.ObjectId;
+  gameType: GameType;
+  difficulty: GameDifficulty;
+  status: GameStatus;
+  
+  // Jugadores
+  slpId: mongoose.Types.ObjectId;
+  childId: mongoose.Types.ObjectId;
+  
+  // Estado del juego
+  gameState: IGameState;
+  
+  // Historial de acciones
+  actions: IGameAction[];
+  
+  // Configuración del juego
+  settings: {
+    timePerTurn: number; // en segundos
+    maxAttemptsPerWord: number;
+    enableHints: boolean;
+    enableSoundEffects: boolean;
+    autoAdvance: boolean;
+  };
+  
+  // Métodos de instancia
+  startGame(): void;
+  pauseGame(): void;
+  resumeGame(): void;
+  endGame(): void;
+  nextTurn(): void;
+  evaluatePronunciation(word: string, pronunciation: 'correct' | 'incorrect' | 'partial', notes?: string): void;
+  getCurrentPlayer(): 'slp' | 'child';
+  getGameProgress(): number; // porcentaje de completitud
+  isGameOver(): boolean;
+  getWinner(): 'slp' | 'child' | 'tie' | null;
+}
+
+// Esquema de Mongoose
+const gameSchema = new Schema<IGame>({
+  sessionId: {
+    type: Schema.Types.ObjectId,
+    ref: 'TherapySession',
+    required: [true, 'ID de sesión es requerido'],
+    index: true
+  },
+  gameType: {
+    type: String,
+    enum: Object.values(GameType),
+    required: [true, 'Tipo de juego es requerido']
+  },
+  difficulty: {
+    type: String,
+    enum: Object.values(GameDifficulty),
+    required: [true, 'Dificultad es requerida']
+  },
+  status: {
+    type: String,
+    enum: Object.values(GameStatus),
+    default: GameStatus.WAITING
+  },
+  
+  // Jugadores
+  slpId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'ID del SLP es requerido']
+  },
+  childId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'ID del niño es requerido']
+  },
+  
+  // Estado del juego
+  gameState: {
+    currentWord: {
+      type: String,
+      required: true,
+      maxlength: [100, 'La palabra no puede exceder 100 caracteres']
+    },
+    currentPlayer: {
+      type: String,
+      enum: ['slp', 'child'],
+      required: true
+    },
+    turnNumber: {
+      type: Number,
+      default: 1,
+      min: [1, 'El número de turno debe ser al menos 1']
+    },
+    maxTurns: {
+      type: Number,
+      default: 10,
+      min: [1, 'El máximo de turnos debe ser al menos 1'],
+      max: [50, 'El máximo de turnos no puede exceder 50']
+    },
+    score: {
+      slp: {
+        type: Number,
+        default: 0,
+        min: [0, 'El puntaje no puede ser negativo']
+      },
+      child: {
+        type: Number,
+        default: 0,
+        min: [0, 'El puntaje no puede ser negativo']
+      }
+    },
+    currentRound: {
+      type: Number,
+      default: 1,
+      min: [1, 'El número de ronda debe ser al menos 1']
+    },
+    totalRounds: {
+      type: Number,
+      default: 3,
+      min: [1, 'El total de rondas debe ser al menos 1'],
+      max: [10, 'El total de rondas no puede exceder 10']
+    },
+    timeRemaining: {
+      type: Number,
+      default: 30,
+      min: [0, 'El tiempo restante no puede ser negativo']
+    },
+    isPaused: {
+      type: Boolean,
+      default: false
+    }
+  },
+  
+  // Historial de acciones
+  actions: [{
+    playerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    playerType: {
+      type: String,
+      enum: ['slp', 'child'],
+      required: true
+    },
+    action: {
+      type: String,
+      enum: ['word_pronounced', 'evaluation_given', 'turn_skipped', 'game_paused'],
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    data: {
+      word: {
+        type: String,
+        maxlength: [100, 'La palabra no puede exceder 100 caracteres']
+      },
+      pronunciation: {
+        type: String,
+        enum: ['correct', 'incorrect', 'partial']
+      },
+      notes: {
+        type: String,
+        maxlength: [200, 'Las notas no pueden exceder 200 caracteres']
+      },
+      timeSpent: {
+        type: Number,
+        min: [0, 'El tiempo no puede ser negativo']
+      }
+    }
+  }],
+  
+  // Configuración del juego
+  settings: {
+    timePerTurn: {
+      type: Number,
+      default: 30,
+      min: [10, 'El tiempo por turno debe ser al menos 10 segundos'],
+      max: [120, 'El tiempo por turno no puede exceder 120 segundos']
+    },
+    maxAttemptsPerWord: {
+      type: Number,
+      default: 3,
+      min: [1, 'El máximo de intentos debe ser al menos 1'],
+      max: [5, 'El máximo de intentos no puede exceder 5']
+    },
+    enableHints: {
+      type: Boolean,
+      default: true
+    },
+    enableSoundEffects: {
+      type: Boolean,
+      default: true
+    },
+    autoAdvance: {
+      type: Boolean,
+      default: false
+    }
+  }
+}, {
+  timestamps: true,
+  toJSON: {
+    transform: function(doc, ret) {
+      // Agregar campos calculados
+      ret.currentPlayer = doc.getCurrentPlayer();
+      ret.gameProgress = doc.getGameProgress();
+      ret.isGameOver = doc.isGameOver();
+      ret.winner = doc.getWinner();
+      return ret;
+    }
+  }
+});
+
+// Índices para optimizar consultas
+gameSchema.index({ sessionId: 1, status: 1 });
+gameSchema.index({ slpId: 1, status: 1 });
+gameSchema.index({ childId: 1, status: 1 });
+gameSchema.index({ status: 1, createdAt: 1 });
+
+// Método para iniciar el juego
+gameSchema.methods.startGame = function(): void {
+  this.status = GameStatus.ACTIVE;
+  this.gameState.isPaused = false;
+  this.gameState.timeRemaining = this.settings.timePerTurn;
+  this.gameState.currentPlayer = 'child'; // El niño siempre empieza
+  
+  // Agregar acción de inicio
+  this.actions.push({
+    playerId: this.slpId,
+    playerType: 'slp',
+    action: 'game_paused',
+    timestamp: new Date(),
+    data: {}
+  });
+};
+
+// Método para pausar el juego
+gameSchema.methods.pauseGame = function(): void {
+  this.gameState.isPaused = true;
+  this.status = GameStatus.PAUSED;
+  
+  this.actions.push({
+    playerId: this.slpId,
+    playerType: 'slp',
+    action: 'game_paused',
+    timestamp: new Date(),
+    data: {}
+  });
+};
+
+// Método para reanudar el juego
+gameSchema.methods.resumeGame = function(): void {
+  this.gameState.isPaused = false;
+  this.status = GameStatus.ACTIVE;
+};
+
+// Método para terminar el juego
+gameSchema.methods.endGame = function(): void {
+  this.status = GameStatus.COMPLETED;
+  this.gameState.timeRemaining = 0;
+};
+
+// Método para avanzar al siguiente turno
+gameSchema.methods.nextTurn = function(): void {
+  if (this.gameState.turnNumber >= this.gameState.maxTurns) {
+    this.endGame();
+    return;
+  }
+  
+  this.gameState.turnNumber++;
+  this.gameState.currentPlayer = this.gameState.currentPlayer === 'slp' ? 'child' : 'slp';
+  this.gameState.timeRemaining = this.settings.timePerTurn;
+  
+  // Cambiar de ronda si es necesario
+  if (this.gameState.turnNumber > this.gameState.maxTurns / this.gameState.totalRounds) {
+    this.gameState.currentRound++;
+  }
+};
+
+// Método para evaluar pronunciación
+gameSchema.methods.evaluatePronunciation = function(
+  word: string, 
+  pronunciation: 'correct' | 'incorrect' | 'partial', 
+  notes?: string
+): void {
+  // Agregar acción de evaluación
+  this.actions.push({
+    playerId: this.slpId,
+    playerType: 'slp',
+    action: 'evaluation_given',
+    timestamp: new Date(),
+    data: {
+      word,
+      pronunciation,
+      notes
+    }
+  });
+  
+  // Actualizar puntaje
+  if (pronunciation === 'correct') {
+    this.gameState.score.child += 10;
+  } else if (pronunciation === 'partial') {
+    this.gameState.score.child += 5;
+  }
+  
+  // Avanzar al siguiente turno
+  this.nextTurn();
+};
+
+// Método para obtener el jugador actual
+gameSchema.methods.getCurrentPlayer = function(): 'slp' | 'child' {
+  return this.gameState.currentPlayer;
+};
+
+// Método para obtener el progreso del juego
+gameSchema.methods.getGameProgress = function(): number {
+  return Math.round((this.gameState.turnNumber / this.gameState.maxTurns) * 100);
+};
+
+// Método para verificar si el juego ha terminado
+gameSchema.methods.isGameOver = function(): boolean {
+  return this.status === GameStatus.COMPLETED || 
+         this.gameState.turnNumber >= this.gameState.maxTurns;
+};
+
+// Método para obtener el ganador
+gameSchema.methods.getWinner = function(): 'slp' | 'child' | 'tie' | null {
+  if (!this.isGameOver()) return null;
+  
+  if (this.gameState.score.slp > this.gameState.score.child) {
+    return 'slp';
+  } else if (this.gameState.score.child > this.gameState.score.slp) {
+    return 'child';
+  } else {
+    return 'tie';
+  }
+};
+
+// Middleware pre-save para validaciones
+gameSchema.pre('save', function(next) {
+  // Validar que el juego no exceda el máximo de turnos
+  if (this.gameState.turnNumber > this.gameState.maxTurns) {
+    this.invalidate('gameState.turnNumber', 'El turno no puede exceder el máximo');
+  }
+  
+  // Validar que el tiempo restante no sea negativo
+  if (this.gameState.timeRemaining < 0) {
+    this.gameState.timeRemaining = 0;
+  }
+  
+  next();
+});
+
+export const Game = mongoose.model<IGame>('Game', gameSchema);
+

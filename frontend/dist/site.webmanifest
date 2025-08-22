@@ -1,0 +1,16 @@
+{
+  "name": "Plataforma Virtual de Terapia del Habla",
+  "short_name": "Terapia del Habla",
+  "description": "Plataforma web para terapeutas del habla que permite realizar sesiones virtuales con niños",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

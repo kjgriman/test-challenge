@@ -1,0 +1,52 @@
+# Archivos específicos del proyecto de terapia del habla
+
+# Configuración de MongoDB Atlas (si usas archivos de configuración)
+mongodb-config.json
+atlas-config.json
+
+# Archivos de prueba y desarrollo
+test-data/
+sample-data/
+mock-data/
+
+# Archivos de video/grabación (si implementas grabación de sesiones)
+recordings/
+sessions-recordings/
+*.webm
+*.mp4
+*.avi
+
+# Archivos de audio (si implementas grabación de audio)
+audio/
+*.wav
+*.mp3
+*.ogg
+
+# Archivos de screenshots para testing
+screenshots/
+*.png
+*.jpg
+*.jpeg
+
+# Archivos de documentación temporal
+docs/temp/
+*.md.bak
+
+# Archivos de deployment
+deploy/
+deployment/
+*.env.production
+
+# Archivos de backup de base de datos
+backups/
+*.dump
+*.backup
+
+# Archivos de logs específicos del proyecto
+logs/sessions/
+logs/errors/
+logs/access/
+
+# Archivos temporales de desarrollo
+temp-sessions/
+temp-uploads/
