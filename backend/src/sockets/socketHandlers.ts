@@ -3,6 +3,7 @@ import { TherapySession } from '../models/TherapySession';
 import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
 import { setupVideoRoomHandlers } from './videoRoomHandlers';
+import GameHandlers from './gameHandlers';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -70,6 +71,10 @@ const verifySessionAccess = async (socket: AuthenticatedSocket, sessionId: strin
 export const setupSocketHandlers = (io: Server) => {
   // Configurar handlers de salas de video
   setupVideoRoomHandlers(io);
+  
+  // Configurar handlers de juegos
+  const gameHandlers = new GameHandlers(io);
+  gameHandlers.initialize();
   // Middleware de autenticación
   io.use(async (socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth['token'];

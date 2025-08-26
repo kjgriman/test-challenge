@@ -4,11 +4,13 @@ import { useSearchParams } from 'react-router-dom';
 import VideoRoomManager from '../components/video/VideoRoomManager';
 import TestVideoRoom from '../components/video/TestVideoRoom';
 import VideoCallModal from '../components/video/VideoCallModal';
+import GameContainer from '../components/games/GameContainer';
 
 const VideoRooms: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   const [roomInfo, setRoomInfo] = useState<any>(null);
 
   // Verificar si hay un parámetro de sala en la URL
@@ -37,6 +39,14 @@ const VideoRooms: React.FC = () => {
     setRoomInfo(null);
   };
 
+  const handleStartGame = () => {
+    setShowGame(true);
+  };
+
+  const handleCloseGame = () => {
+    setShowGame(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -47,17 +57,26 @@ const VideoRooms: React.FC = () => {
         <VideoRoomManager
           onJoinRoom={handleJoinRoom}
           onCreateRoom={handleCreateRoom}
+          onStartGame={handleStartGame}
         />
       </div>
 
-                     {/* Modal de videollamada */}
-               <VideoCallModal
-                 isOpen={showVideoCall}
-                 onClose={handleCloseVideoCall}
-                 sessionId={currentRoomId || 'default-session'}
-                 sessionTitle={roomInfo?.title || "Sala de Terapia"}
-                 participants={roomInfo?.participants || []}
-               />
+      {/* Modal de videollamada */}
+      <VideoCallModal
+        isOpen={showVideoCall}
+        onClose={handleCloseVideoCall}
+        sessionId={currentRoomId || 'default-session'}
+        sessionTitle={roomInfo?.title || "Sala de Terapia"}
+        participants={roomInfo?.participants || []}
+      />
+
+      {/* Modal del juego */}
+      {showGame && currentRoomId && (
+        <GameContainer
+          sessionId={currentRoomId}
+          onClose={handleCloseGame}
+        />
+      )}
     </motion.div>
   );
 };

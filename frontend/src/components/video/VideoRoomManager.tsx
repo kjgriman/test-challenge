@@ -34,11 +34,13 @@ interface VideoRoom {
 interface VideoRoomManagerProps {
   onJoinRoom: (roomId: string) => void;
   onCreateRoom: (sessionId: string, title: string) => void;
+  onStartGame: () => void;
 }
 
 const VideoRoomManager: React.FC<VideoRoomManagerProps> = ({
   onJoinRoom,
-  onCreateRoom
+  onCreateRoom,
+  onStartGame
 }) => {
   const [rooms, setRooms] = useState<VideoRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,8 +220,8 @@ const VideoRoomManager: React.FC<VideoRoomManagerProps> = ({
                   <span>{room.participants.length} participantes</span>
                 </div>
                 <div className="space-y-1">
-                  {room.participants.slice(0, 3).map((participant) => (
-                    <div key={participant.userId} className="flex items-center space-x-2">
+                  {room.participants.slice(0, 3).map((participant, index) => (
+                    <div key={`${participant.userId}-${index}`} className="flex items-center space-x-2">
                       <div className={`w-2 h-2 rounded-full ${
                         participant.isActive ? 'bg-green-500' : 'bg-gray-300'
                       }`}></div>
@@ -251,6 +253,14 @@ const VideoRoomManager: React.FC<VideoRoomManagerProps> = ({
                 >
                   <Video className="w-4 h-4" />
                   <span>Unirse</span>
+                </button>
+                <button
+                  onClick={onStartGame}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                  title="Iniciar Juego"
+                >
+                  <span className="text-lg">🎮</span>
+                  <span className="text-sm">Juego</span>
                 </button>
                 <button
                   onClick={() => copyRoomId(room.roomId)}
