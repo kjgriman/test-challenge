@@ -4,12 +4,13 @@
   "description": "Backend API para plataforma de terapia del habla virtual",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "echo '🔨 Building backend...' && tsc && echo '✅ Backend build successful!'",
+    "start": "echo '🚀 Starting backend server...' && node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "postinstall": "echo '📦 Dependencies installed successfully!'"
   },
   "keywords": [
     "speech-therapy",

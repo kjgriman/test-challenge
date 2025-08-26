@@ -92,10 +92,11 @@ app.use('*', (req, res) => {
 
 // Función para iniciar el servidor
 const startServer = () => {
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
-    console.log(`📡 WebSocket disponible en ws://localhost:${PORT}`);
-    console.log(`🌐 API disponible en http://localhost:${PORT}/api`);
+    console.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT}`);
+    console.log(`🌐 API disponible en http://0.0.0.0:${PORT}/api`);
+    console.log(`🌍 Entorno: ${process.env['NODE_ENV'] || 'development'}`);
   });
 };
 
