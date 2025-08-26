@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Users, Trophy, Clock } from 'lucide-react';
+import { Play, Pause, RotateCcw, Users } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import GameScore from './GameScore';
 import GameTimer from './GameTimer';
@@ -40,19 +40,19 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
   const { user } = useAuthStore();
   const gameManagerRef = useRef<GameManager>(new GameManager(gameWords));
 
-  // Función para sincronizar el estado del juego
-  const syncGameState = () => {
-    const gameManager = gameManagerRef.current;
-    const managerState = gameManager.getGameState();
-    
-    setGameState(prev => ({
-      ...prev,
-      currentTurn: managerState.currentTurn,
-      score: managerState.score,
-      round: managerState.currentRound,
-      maxRounds: managerState.maxRounds
-    }));
-  };
+  // Función para sincronizar el estado del juego (comentada por ahora)
+  // const syncGameState = () => {
+  //   const gameManager = gameManagerRef.current;
+  //   const managerState = gameManager.getGameState();
+  //   
+  //   setGameState(prev => ({
+  //     ...prev,
+  //     currentTurn: managerState.currentTurn,
+  //     score: managerState.score,
+  //     round: managerState.currentRound,
+  //     maxRounds: managerState.maxRounds
+  //   }));
+  // };
 
   // Inicializar juego
   const startGame = () => {
@@ -127,7 +127,7 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
         }
       } else {
         // Cambiar turno
-        const newTurn = gameManager.changeTurn();
+        gameManager.changeTurn();
         const managerState = gameManager.getGameState();
         
         setGameState(prev => ({
@@ -144,7 +144,7 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
   // Manejar tiempo agotado
   const handleTimeUp = () => {
     const gameManager = gameManagerRef.current;
-    const newTurn = gameManager.changeTurn();
+    gameManager.changeTurn();
     const managerState = gameManager.getGameState();
     
     setGameState(prev => ({
