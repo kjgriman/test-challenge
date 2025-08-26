@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "echo '🔨 Starting TypeScript compilation...' && tsc --noEmit && echo '✅ TypeScript compilation successful!' && echo '🚀 Starting Vite build...' && vite build && echo '🎉 Build completed successfully!'",
+    "build:tsc": "tsc --noEmit",
+    "build:vite": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
