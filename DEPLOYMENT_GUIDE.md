@@ -36,9 +36,9 @@ SESSION_SECRET=tu-session-secret
 
 #### Variables del Frontend:
 ```
-VITE_API_URL=https://tu-app.vercel.app
+VITE_API_URL=https://test-challenge-production.up.railway.app
 VITE_APP_NAME=Plataforma de Terapia del Habla
-VITE_SOCKET_URL=https://tu-app.vercel.app
+VITE_SOCKET_URL=https://test-challenge-production.up.railway.app
 ```
 
 ## 🚀 Pasos para Desplegar
