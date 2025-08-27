@@ -19,7 +19,7 @@ RUN echo "🔧 Installing backend dependencies..." && cd backend && npm install 
 COPY . .
 
 # Build the backend
-RUN echo "🔨 Building backend kerbin..." && cd backend && npm run build && echo "✅ Backend build completed!"
+RUN echo "🔨 Building backend..." && cd backend && chmod +x node_modules/.bin/tsc && npm run build && echo "✅ Backend build completed!"
 
 # Expose port
 EXPOSE 3001
