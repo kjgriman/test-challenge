@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { TherapySession } from '../models/TherapySession';
 import { User } from '../models/User';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { setupVideoRoomHandlers } from './videoRoomHandlers';
 import GameHandlers from './gameHandlers';
 

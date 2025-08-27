@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { User, UserRole } from '../models/User';
 import { AuthenticationError, AuthorizationError } from './errorHandler';
 

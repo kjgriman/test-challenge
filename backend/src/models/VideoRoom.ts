@@ -16,6 +16,22 @@ export interface IVideoRoom extends Document {
   maxParticipants: number;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Métodos de instancia
+  addParticipant(userId: mongoose.Types.ObjectId, name: string, role: 'slp' | 'child'): Promise<IVideoRoom>;
+  removeParticipant(userId: mongoose.Types.ObjectId): Promise<IVideoRoom>;
+  getActiveParticipants(): Array<{
+    userId: mongoose.Types.ObjectId;
+    name: string;
+    role: 'slp' | 'child';
+    joinedAt: Date;
+    isActive: boolean;
+  }>;
+}
+
+// Interfaz para métodos estáticos
+export interface IVideoRoomModel extends mongoose.Model<IVideoRoom> {
+  generateRoomId(): string;
 }
 
 const VideoRoomSchema = new Schema<IVideoRoom>({
@@ -117,4 +133,4 @@ VideoRoomSchema.statics.generateRoomId = function(): string {
   return `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-export const VideoRoom = mongoose.model<IVideoRoom>('VideoRoom', VideoRoomSchema);
+export const VideoRoom = mongoose.model<IVideoRoom, IVideoRoomModel>('VideoRoom', VideoRoomSchema);
