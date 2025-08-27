@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import mongoose from 'mongoose';
 import { VideoRoom } from '../models/VideoRoom';
 
 interface VideoRoomSocket extends Socket {
@@ -51,7 +52,7 @@ export const setupVideoRoomHandlers = (io: Server) => {
         videoRooms.get(roomId)!.add(socket);
 
         // Agregar participante a la base de datos
-        await room.addParticipant(userId, name, role);
+        await room.addParticipant(new mongoose.Types.ObjectId(userId), name, role);
 
         // Notificar a todos en la sala
         const participants = await room.getActiveParticipants();
@@ -103,7 +104,7 @@ export const setupVideoRoomHandlers = (io: Server) => {
         // Remover participante de la base de datos
         const room = await VideoRoom.findOne({ roomId });
         if (room) {
-          await room.removeParticipant(userId);
+          await room.removeParticipant(new mongoose.Types.ObjectId(userId));
         }
 
         // Notificar a otros participantes
@@ -161,7 +162,7 @@ export const setupVideoRoomHandlers = (io: Server) => {
           // Remover participante de la base de datos
           const room = await VideoRoom.findOne({ roomId });
           if (room) {
-            await room.removeParticipant(userId);
+            await room.removeParticipant(new mongoose.Types.ObjectId(userId));
           }
 
           // Notificar a otros participantes

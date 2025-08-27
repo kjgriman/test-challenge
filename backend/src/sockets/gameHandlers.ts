@@ -286,7 +286,7 @@ class GameHandlers {
     console.log(`🔌 Cliente desconectado: ${socket.id}`);
 
     // Encontrar y limpiar sesiones del usuario
-    for (const [sessionId, gameSession] of this.gameSessions.entries()) {
+    for (const [sessionId, gameSession] of Array.from(this.gameSessions.entries())) {
       const participantIndex = Object.keys(gameSession.participants).find(
         userId => socket.id === userId
       );
@@ -318,7 +318,7 @@ class GameHandlers {
       activeGames: 0
     };
 
-    for (const gameSession of this.gameSessions.values()) {
+    for (const gameSession of Array.from(this.gameSessions.values())) {
       stats.totalParticipants += Object.keys(gameSession.participants).length;
       if (gameSession.isPlaying) {
         stats.activeGames++;
