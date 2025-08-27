@@ -1,14 +1,22 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logRateLimitAttempt = exports.getRateLimitInfo = exports.dynamicRateLimiter = exports.gameRateLimiter = exports.sessionRateLimiter = exports.wsRateLimiter = exports.authRateLimiter = exports.rateLimiter = void 0;
-const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+var express_rate_limit_1 = require("express-rate-limit");
 // Configuración de rate limiting para diferentes endpoints
 exports.rateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // Máximo 100 requests por ventana de tiempo
+    max: process.env['NODE_ENV'] === 'development' ? 1000 : 100, // Más permisivo en desarrollo
     message: {
         success: false,
         error: {
@@ -19,7 +27,7 @@ exports.rateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true, // Incluir headers estándar de rate limit
     legacyHeaders: false, // No incluir headers legacy
-    handler: (req, res) => {
+    handler: function (req, res) {
         // Log del rate limit excedido para monitoreo
         console.warn('⚠️ Rate limit excedido:', {
             ip: req.ip,
@@ -38,12 +46,12 @@ exports.rateLimiter = (0, express_rate_limit_1.default)({
         });
     },
     // Función para generar la clave del rate limit
-    keyGenerator: (req) => {
+    keyGenerator: function (req) {
         // Usar IP del usuario como clave principal
         return req.ip || req.connection.remoteAddress || 'unknown';
     },
     // Función para saltar ciertas rutas del rate limiting
-    skip: (req) => {
+    skip: function (req) {
         // Saltar health checks y endpoints de monitoreo
         return req.path === '/health' || req.path === '/metrics';
     }
@@ -51,7 +59,7 @@ exports.rateLimiter = (0, express_rate_limit_1.default)({
 // Rate limiter más estricto para autenticación
 exports.authRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // Máximo 5 intentos de login por ventana de tiempo
+    max: process.env['NODE_ENV'] === 'development' ? 50 : 5, // Más permisivo en desarrollo
     message: {
         success: false,
         error: {
@@ -62,7 +70,7 @@ exports.authRateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (req, res) => {
+    handler: function (req, res) {
         console.warn('🔒 Rate limit de autenticación excedido:', {
             ip: req.ip,
             url: req.url,
@@ -77,11 +85,11 @@ exports.authRateLimiter = (0, express_rate_limit_1.default)({
             }
         });
     },
-    keyGenerator: (req) => {
+    keyGenerator: function (req) {
         return req.ip || req.connection.remoteAddress || 'unknown';
     },
     // Aplicar solo a rutas de autenticación
-    skip: (req) => {
+    skip: function (req) {
         return !req.path.includes('/auth');
     }
 });
@@ -99,7 +107,7 @@ exports.wsRateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (req, res) => {
+    handler: function (req, res) {
         console.warn('📡 Rate limit de WebSocket excedido:', {
             ip: req.ip,
             timestamp: new Date().toISOString()
@@ -113,7 +121,7 @@ exports.wsRateLimiter = (0, express_rate_limit_1.default)({
             }
         });
     },
-    keyGenerator: (req) => {
+    keyGenerator: function (req) {
         return req.ip || req.connection.remoteAddress || 'unknown';
     }
 });
@@ -131,10 +139,11 @@ exports.sessionRateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (req, res) => {
+    handler: function (req, res) {
+        var _a;
         console.warn('📅 Rate limit de sesiones excedido:', {
             ip: req.ip,
-            userId: req.user?.id || 'unknown',
+            userId: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || 'unknown',
             timestamp: new Date().toISOString()
         });
         res.status(429).json({
@@ -146,12 +155,13 @@ exports.sessionRateLimiter = (0, express_rate_limit_1.default)({
             }
         });
     },
-    keyGenerator: (req) => {
+    keyGenerator: function (req) {
+        var _a;
         // Usar ID del usuario si está autenticado, sino IP
-        return req.user?.id || req.ip || req.connection.remoteAddress || 'unknown';
+        return ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || req.ip || req.connection.remoteAddress || 'unknown';
     },
     // Aplicar solo a rutas de sesiones
-    skip: (req) => {
+    skip: function (req) {
         return !req.path.includes('/sessions');
     }
 });
@@ -169,10 +179,11 @@ exports.gameRateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (req, res) => {
+    handler: function (req, res) {
+        var _a;
         console.warn('🎮 Rate limit de juegos excedido:', {
             ip: req.ip,
-            userId: req.user?.id || 'unknown',
+            userId: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || 'unknown',
             timestamp: new Date().toISOString()
         });
         res.status(429).json({
@@ -184,16 +195,17 @@ exports.gameRateLimiter = (0, express_rate_limit_1.default)({
             }
         });
     },
-    keyGenerator: (req) => {
-        return req.user?.id || req.ip || req.connection.remoteAddress || 'unknown';
+    keyGenerator: function (req) {
+        var _a;
+        return ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || req.ip || req.connection.remoteAddress || 'unknown';
     },
     // Aplicar solo a rutas de juegos
-    skip: (req) => {
+    skip: function (req) {
         return !req.path.includes('/games');
     }
 });
 // Middleware para aplicar rate limiting dinámico basado en el rol del usuario
-const dynamicRateLimiter = (req, res, next) => {
+var dynamicRateLimiter = function (req, res, next) {
     // Aplicar rate limiting más estricto para usuarios no autenticados
     if (!req.user) {
         return (0, express_rate_limit_1.default)({
@@ -202,7 +214,7 @@ const dynamicRateLimiter = (req, res, next) => {
         })(req, res, next);
     }
     // Aplicar rate limiting basado en el rol
-    const userRole = req.user.role;
+    var userRole = req.user.role;
     if (userRole === 'slp') {
         // SLP tienen límites más altos
         return (0, express_rate_limit_1.default)({
@@ -222,25 +234,21 @@ const dynamicRateLimiter = (req, res, next) => {
 };
 exports.dynamicRateLimiter = dynamicRateLimiter;
 // Función para obtener información del rate limit
-const getRateLimitInfo = (req) => {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    const userId = req.user?.id || 'anonymous';
+var getRateLimitInfo = function (req) {
+    var _a, _b;
+    var ip = req.ip || req.connection.remoteAddress || 'unknown';
+    var userId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || 'anonymous';
     return {
-        ip,
-        userId,
-        userRole: req.user?.role || 'anonymous',
+        ip: ip,
+        userId: userId,
+        userRole: ((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) || 'anonymous',
         timestamp: new Date().toISOString()
     };
 };
 exports.getRateLimitInfo = getRateLimitInfo;
 // Función para loggear intentos de rate limit
-const logRateLimitAttempt = (req, endpoint) => {
-    const info = (0, exports.getRateLimitInfo)(req);
-    console.log('📊 Rate limit attempt:', {
-        ...info,
-        endpoint,
-        userAgent: req.get('User-Agent')
-    });
+var logRateLimitAttempt = function (req, endpoint) {
+    var info = (0, exports.getRateLimitInfo)(req);
+    console.log('📊 Rate limit attempt:', __assign(__assign({}, info), { endpoint: endpoint, userAgent: req.get('User-Agent') }));
 };
 exports.logRateLimitAttempt = logRateLimitAttempt;
-//# sourceMappingURL=rateLimiter.js.map

@@ -1,57 +1,57 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.io = exports.app = void 0;
-const express_1 = __importDefault(require("express"));
-const http_1 = require("http");
-const socket_io_1 = require("socket.io");
-const cors_1 = __importDefault(require("cors"));
-const helmet_1 = __importDefault(require("helmet"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const mongoose_1 = __importDefault(require("mongoose"));
+var express = require('express');
+var http_1 = require("http");
+var socket_io_1 = require("socket.io");
+var cors = require('cors');
+var helmet = require('helmet');
+var dotenv = require('dotenv');
+var mongoose_1 = require("mongoose");
 // Importar rutas y middleware
-const auth_1 = __importDefault(require("./routes/auth"));
-const dashboard_1 = __importDefault(require("./routes/dashboard"));
+var auth_1 = require("./routes/auth");
+var dashboard_1 = require("./routes/dashboard");
 // import userRoutes from './routes/users';
-const sessions_1 = __importDefault(require("./routes/sessions"));
-const students_1 = __importDefault(require("./routes/students"));
+var sessions_1 = require("./routes/sessions");
+var students_1 = require("./routes/students");
+var videoRooms_1 = require("./routes/videoRooms");
 // import gameRoutes from './routes/games';
-const socketHandlers_1 = require("./sockets/socketHandlers");
+var socketHandlers_1 = require("./sockets/socketHandlers");
 // import { Game } from './models/Game'; // Temporarily disabled due to TypeScript errors
-const errorHandler_1 = require("./middleware/errorHandler");
-const rateLimiter_1 = require("./middleware/rateLimiter");
+var errorHandler_1 = require("./middleware/errorHandler");
+var rateLimiter_1 = require("./middleware/rateLimiter");
 // Cargar variables de entorno
-dotenv_1.default.config();
-const app = (0, express_1.default)();
+dotenv.config();
+var app = express();
 exports.app = app;
-const server = (0, http_1.createServer)(app);
-const io = new socket_io_1.Server(server, {
+var server = (0, http_1.createServer)(app);
+var io = new socket_io_1.Server(server, {
     cors: {
-        origin: process.env['FRONTEND_URL'] || "http://localhost:5173",
+        origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "http://localhost:5173",
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 exports.io = io;
-const PORT = process.env['PORT'] || 3001;
-const MONGODB_URI = process.env['MONGODB_URI'] || 'mongodb://127.0.0.1:27017/speech-therapy';
+var PORT = process.env['PORT'] || 3001;
+var MONGODB_URI = process.env['MONGODB_URI'] || 'mongodb://127.0.0.1:27017/speech-therapy';
 // Para desarrollo sin MongoDB, usar base de datos en memoria
-const USE_IN_MEMORY_DB = process.env['NODE_ENV'] === 'development' && !process.env['MONGODB_URI'];
+var USE_IN_MEMORY_DB = process.env['NODE_ENV'] === 'development' && !process.env['MONGODB_URI'];
 // Middleware de seguridad y parsing
-app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)({
-    origin: process.env['FRONTEND_URL'] || "http://localhost:5173",
+app.use(helmet());
+app.use(cors({
+    origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "http://localhost:5173",
     credentials: true
 }));
-app.use(express_1.default.json({ limit: '10mb' }));
-app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
-// Rate limiting para prevenir abuso
-app.use(rateLimiter_1.rateLimiter);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Rate limiting para prevenir abuso (solo en producción)
+if (process.env['NODE_ENV'] !== 'development') {
+    app.use(rateLimiter_1.rateLimiter);
+}
 // Logging middleware para debugging
-app.use((req, _res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+app.use(function (req, _res, next) {
+    console.log("".concat(new Date().toISOString(), " - ").concat(req.method, " ").concat(req.path));
     next();
 });
 // Rutas de la API
@@ -60,9 +60,10 @@ app.use('/api/dashboard', dashboard_1.default);
 // app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessions_1.default);
 app.use('/api/students', students_1.default);
+app.use('/api/video-rooms', videoRooms_1.default);
 // app.use('/api/games', gameRoutes);
 // Health check endpoint
-app.get('/health', (_req, res) => {
+app.get('/health', function (_req, res) {
     res.json({
         status: 'OK',
         timestamp: new Date().toISOString(),
@@ -74,18 +75,19 @@ app.get('/health', (_req, res) => {
 // Middleware de manejo de errores (debe ir al final)
 app.use(errorHandler_1.errorHandler);
 // Manejo de rutas no encontradas
-app.use('*', (req, res) => {
+app.use('*', function (req, res) {
     res.status(404).json({
         error: 'Ruta no encontrada',
         path: req.originalUrl
     });
 });
 // Función para iniciar el servidor
-const startServer = () => {
-    server.listen(PORT, () => {
-        console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
-        console.log(`📡 WebSocket disponible en ws://localhost:${PORT}`);
-        console.log(`🌐 API disponible en http://localhost:${PORT}/api`);
+var startServer = function () {
+    server.listen(Number(PORT), '0.0.0.0', function () {
+        console.log("\uD83D\uDE80 Servidor ejecut\u00E1ndose en puerto ".concat(PORT));
+        console.log("\uD83D\uDCE1 WebSocket disponible en ws://0.0.0.0:".concat(PORT));
+        console.log("\uD83C\uDF10 API disponible en http://0.0.0.0:".concat(PORT, "/api"));
+        console.log("\uD83C\uDF0D Entorno: ".concat(process.env['NODE_ENV'] || 'development'));
     });
 };
 // Conectar a MongoDB o usar base de datos en memoria
@@ -99,31 +101,30 @@ else {
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
     })
-        .then(() => {
+        .then(function () {
         console.log('✅ Conectado a MongoDB');
         startServer();
     })
-        .catch((error) => {
+        .catch(function (error) {
         console.error('❌ Error conectando a MongoDB:', error);
         console.log('💡 Para desarrollo sin MongoDB, establece NODE_ENV=development');
         process.exit(1);
     });
 }
 // Manejo graceful de cierre
-process.on('SIGTERM', () => {
+process.on('SIGTERM', function () {
     console.log('🔄 Recibido SIGTERM, cerrando servidor...');
-    server.close(() => {
+    server.close(function () {
         console.log('✅ Servidor cerrado');
         mongoose_1.default.connection.close();
         process.exit(0);
     });
 });
-process.on('SIGINT', () => {
+process.on('SIGINT', function () {
     console.log('🔄 Recibido SIGINT, cerrando servidor...');
-    server.close(() => {
+    server.close(function () {
         console.log('✅ Servidor cerrado');
         mongoose_1.default.connection.close();
         process.exit(0);
     });
 });
-//# sourceMappingURL=index.js.map

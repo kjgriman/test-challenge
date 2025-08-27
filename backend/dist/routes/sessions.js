@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const asyncErrorHandler_1 = require("../middleware/asyncErrorHandler");
-const sessionController_1 = require("../controllers/sessionController");
-const router = (0, express_1.Router)();
+var express_1 = require("express");
+var auth_1 = require("../middleware/auth");
+var asyncErrorHandler_1 = require("../middleware/asyncErrorHandler");
+var sessionController_1 = require("../controllers/sessionController");
+var router = (0, express_1.Router)();
 // Rutas para sesiones (requieren autenticación)
 router.use(auth_1.authenticate);
 // CRUD básico
@@ -20,4 +20,3 @@ router.post('/:id/start', auth_1.isSLP, (0, asyncErrorHandler_1.asyncErrorHandle
 router.post('/:id/end', auth_1.isSLP, (0, asyncErrorHandler_1.asyncErrorHandler)(sessionController_1.endSession));
 router.get('/:id/participants', (0, asyncErrorHandler_1.asyncErrorHandler)(sessionController_1.getSessionParticipants));
 exports.default = router;
-//# sourceMappingURL=sessions.js.map

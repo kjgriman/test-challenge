@@ -1,9 +1,9 @@
-import express from 'express';
+const express = require('express');
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import cors from 'cors';
-import helmet from 'helmet';
-import dotenv from 'dotenv';
+const cors = require('cors');
+const helmet = require('helmet');
+const dotenv = require('dotenv');
 import mongoose from 'mongoose';
 
 // Importar rutas y middleware

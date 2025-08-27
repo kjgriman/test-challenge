@@ -1,81 +1,134 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupGlobalErrorHandlers = exports.sendSuccessResponse = exports.sendErrorResponse = exports.asyncErrorHandler = exports.unhandledRejectionHandler = exports.unhandledErrorHandler = exports.errorHandler = exports.createMongooseCastError = exports.createMongooseDuplicateError = exports.createMongooseValidationError = exports.RateLimitError = exports.ConflictError = exports.NotFoundError = exports.AuthorizationError = exports.AuthenticationError = exports.ValidationError = exports.OperationalError = void 0;
 // Clase para errores operacionales
-class OperationalError extends Error {
-    constructor(message, statusCode = 500, code = 'INTERNAL_ERROR') {
-        super(message);
-        this.statusCode = statusCode;
-        this.isOperational = true;
-        this.code = code;
+var OperationalError = /** @class */ (function (_super) {
+    __extends(OperationalError, _super);
+    function OperationalError(message, statusCode, code) {
+        if (statusCode === void 0) { statusCode = 500; }
+        if (code === void 0) { code = 'INTERNAL_ERROR'; }
+        var _this = _super.call(this, message) || this;
+        _this.statusCode = statusCode;
+        _this.isOperational = true;
+        _this.code = code;
         // Mantener el stack trace
-        Error.captureStackTrace(this, this.constructor);
+        Error.captureStackTrace(_this, _this.constructor);
+        return _this;
     }
-}
+    return OperationalError;
+}(Error));
 exports.OperationalError = OperationalError;
 // Clase para errores de validación
-class ValidationError extends OperationalError {
-    constructor(message, code = 'VALIDATION_ERROR') {
-        super(message, 400, code);
+var ValidationError = /** @class */ (function (_super) {
+    __extends(ValidationError, _super);
+    function ValidationError(message, code) {
+        if (code === void 0) { code = 'VALIDATION_ERROR'; }
+        return _super.call(this, message, 400, code) || this;
     }
-}
+    return ValidationError;
+}(OperationalError));
 exports.ValidationError = ValidationError;
 // Clase para errores de autenticación
-class AuthenticationError extends OperationalError {
-    constructor(message = 'No autorizado', code = 'AUTHENTICATION_ERROR') {
-        super(message, 401, code);
+var AuthenticationError = /** @class */ (function (_super) {
+    __extends(AuthenticationError, _super);
+    function AuthenticationError(message, code) {
+        if (message === void 0) { message = 'No autorizado'; }
+        if (code === void 0) { code = 'AUTHENTICATION_ERROR'; }
+        return _super.call(this, message, 401, code) || this;
     }
-}
+    return AuthenticationError;
+}(OperationalError));
 exports.AuthenticationError = AuthenticationError;
 // Clase para errores de autorización
-class AuthorizationError extends OperationalError {
-    constructor(message = 'Acceso denegado', code = 'AUTHORIZATION_ERROR') {
-        super(message, 403, code);
+var AuthorizationError = /** @class */ (function (_super) {
+    __extends(AuthorizationError, _super);
+    function AuthorizationError(message, code) {
+        if (message === void 0) { message = 'Acceso denegado'; }
+        if (code === void 0) { code = 'AUTHORIZATION_ERROR'; }
+        return _super.call(this, message, 403, code) || this;
     }
-}
+    return AuthorizationError;
+}(OperationalError));
 exports.AuthorizationError = AuthorizationError;
 // Clase para errores de recurso no encontrado
-class NotFoundError extends OperationalError {
-    constructor(message = 'Recurso no encontrado', code = 'NOT_FOUND_ERROR') {
-        super(message, 404, code);
+var NotFoundError = /** @class */ (function (_super) {
+    __extends(NotFoundError, _super);
+    function NotFoundError(message, code) {
+        if (message === void 0) { message = 'Recurso no encontrado'; }
+        if (code === void 0) { code = 'NOT_FOUND_ERROR'; }
+        return _super.call(this, message, 404, code) || this;
     }
-}
+    return NotFoundError;
+}(OperationalError));
 exports.NotFoundError = NotFoundError;
 // Clase para errores de conflicto
-class ConflictError extends OperationalError {
-    constructor(message, code = 'CONFLICT_ERROR') {
-        super(message, 409, code);
+var ConflictError = /** @class */ (function (_super) {
+    __extends(ConflictError, _super);
+    function ConflictError(message, code) {
+        if (code === void 0) { code = 'CONFLICT_ERROR'; }
+        return _super.call(this, message, 409, code) || this;
     }
-}
+    return ConflictError;
+}(OperationalError));
 exports.ConflictError = ConflictError;
 // Clase para errores de límite de tasa
-class RateLimitError extends OperationalError {
-    constructor(message = 'Demasiadas solicitudes', code = 'RATE_LIMIT_ERROR') {
-        super(message, 429, code);
+var RateLimitError = /** @class */ (function (_super) {
+    __extends(RateLimitError, _super);
+    function RateLimitError(message, code) {
+        if (message === void 0) { message = 'Demasiadas solicitudes'; }
+        if (code === void 0) { code = 'RATE_LIMIT_ERROR'; }
+        return _super.call(this, message, 429, code) || this;
     }
-}
+    return RateLimitError;
+}(OperationalError));
 exports.RateLimitError = RateLimitError;
 // Función para crear errores de validación de Mongoose
-const createMongooseValidationError = (error) => {
-    const messages = Object.values(error.errors).map((err) => err.message);
+var createMongooseValidationError = function (error) {
+    var messages = Object.values(error.errors).map(function (err) { return err.message; });
     return new ValidationError(messages.join(', '), 'MONGOOSE_VALIDATION_ERROR');
 };
 exports.createMongooseValidationError = createMongooseValidationError;
 // Función para crear errores de duplicación de Mongoose
-const createMongooseDuplicateError = (error) => {
-    const field = Object.keys(error.keyPattern)[0];
-    const keyValue = error.keyValue;
-    const value = keyValue && field && keyValue[field] ? keyValue[field] : 'valor';
-    return new ConflictError(`${field} '${value}' ya existe`, 'MONGOOSE_DUPLICATE_ERROR');
+var createMongooseDuplicateError = function (error) {
+    var field = Object.keys(error.keyPattern)[0];
+    var keyValue = error.keyValue;
+    var value = keyValue && field && keyValue[field] ? keyValue[field] : 'valor';
+    return new ConflictError("".concat(field, " '").concat(value, "' ya existe"), 'MONGOOSE_DUPLICATE_ERROR');
 };
 exports.createMongooseDuplicateError = createMongooseDuplicateError;
 // Función para crear errores de cast de Mongoose
-const createMongooseCastError = (error) => {
-    return new ValidationError(`ID inválido: ${error.value}`, 'MONGOOSE_CAST_ERROR');
+var createMongooseCastError = function (error) {
+    return new ValidationError("ID inv\u00E1lido: ".concat(error.value), 'MONGOOSE_CAST_ERROR');
 };
 exports.createMongooseCastError = createMongooseCastError;
 // Middleware principal de manejo de errores
-const errorHandler = (error, req, res, _next) => {
+var errorHandler = function (error, req, res, _next) {
     // Log del error para debugging
     console.error('🚨 Error Handler:', {
         message: error.message,
@@ -87,36 +140,24 @@ const errorHandler = (error, req, res, _next) => {
         timestamp: new Date().toISOString()
     });
     // Determinar el código de estado
-    const statusCode = error.statusCode || 500;
+    var statusCode = error.statusCode || 500;
     // Determinar si es un error operacional
-    const isOperational = error.isOperational || false;
+    var isOperational = error.isOperational || false;
     // Determinar el código de error
-    const errorCode = error.code || 'INTERNAL_ERROR';
+    var errorCode = error.code || 'INTERNAL_ERROR';
     // Crear respuesta de error
-    const errorResponse = {
-        success: false,
-        error: {
-            message: isOperational ? error.message : 'Error interno del servidor',
-            code: errorCode,
-            ...(process.env['NODE_ENV'] === 'development' && {
-                stack: error.stack,
-                details: error.message
-            })
-        },
-        timestamp: new Date().toISOString(),
-        path: req.path,
-        method: req.method,
-        // Agregar flag para redirección si es usuario no encontrado
-        ...(errorCode === 'USER_NOT_FOUND' && {
-            shouldRedirect: true
-        })
-    };
+    var errorResponse = __assign({ success: false, error: __assign({ message: isOperational ? error.message : 'Error interno del servidor', code: errorCode }, (process.env['NODE_ENV'] === 'development' && {
+            stack: error.stack,
+            details: error.message
+        })), timestamp: new Date().toISOString(), path: req.path, method: req.method }, (errorCode === 'USER_NOT_FOUND' && {
+        shouldRedirect: true
+    }));
     // Enviar respuesta
     res.status(statusCode).json(errorResponse);
 };
 exports.errorHandler = errorHandler;
 // Middleware para capturar errores no manejados
-const unhandledErrorHandler = (error) => {
+var unhandledErrorHandler = function (error) {
     console.error('💥 Error no manejado:', {
         message: error.message,
         stack: error.stack,
@@ -128,10 +169,10 @@ const unhandledErrorHandler = (error) => {
 };
 exports.unhandledErrorHandler = unhandledErrorHandler;
 // Middleware para capturar promesas rechazadas
-const unhandledRejectionHandler = (reason, promise) => {
+var unhandledRejectionHandler = function (reason, promise) {
     console.error('🚫 Promesa rechazada no manejada:', {
-        reason,
-        promise,
+        reason: reason,
+        promise: promise,
         timestamp: new Date().toISOString()
     });
     // En producción, podrías enviar el error a un servicio de monitoreo
@@ -139,38 +180,40 @@ const unhandledRejectionHandler = (reason, promise) => {
 };
 exports.unhandledRejectionHandler = unhandledRejectionHandler;
 // Middleware para manejar errores de async/await
-const asyncErrorHandler = (fn) => {
-    return (req, res, next) => {
+var asyncErrorHandler = function (fn) {
+    return function (req, res, next) {
         Promise.resolve(fn(req, res, next)).catch(next);
     };
 };
 exports.asyncErrorHandler = asyncErrorHandler;
 // Función para enviar respuestas de error consistentes
-const sendErrorResponse = (res, statusCode, message, code = 'CUSTOM_ERROR') => {
+var sendErrorResponse = function (res, statusCode, message, code) {
+    if (code === void 0) { code = 'CUSTOM_ERROR'; }
     res.status(statusCode).json({
         success: false,
         error: {
-            message,
-            code,
+            message: message,
+            code: code,
             timestamp: new Date().toISOString()
         }
     });
 };
 exports.sendErrorResponse = sendErrorResponse;
 // Función para enviar respuestas de éxito consistentes
-const sendSuccessResponse = (res, data, message = 'Operación exitosa', statusCode = 200) => {
+var sendSuccessResponse = function (res, data, message, statusCode) {
+    if (message === void 0) { message = 'Operación exitosa'; }
+    if (statusCode === void 0) { statusCode = 200; }
     res.status(statusCode).json({
         success: true,
-        message,
-        data,
+        message: message,
+        data: data,
         timestamp: new Date().toISOString()
     });
 };
 exports.sendSuccessResponse = sendSuccessResponse;
 // Configurar handlers globales para errores no capturados
-const setupGlobalErrorHandlers = () => {
+var setupGlobalErrorHandlers = function () {
     process.on('uncaughtException', exports.unhandledErrorHandler);
     process.on('unhandledRejection', exports.unhandledRejectionHandler);
 };
 exports.setupGlobalErrorHandlers = setupGlobalErrorHandlers;
-//# sourceMappingURL=errorHandler.js.map

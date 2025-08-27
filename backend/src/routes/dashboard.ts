@@ -1,4 +1,4 @@
-import express from 'express';
+const express = require('express');
 import { authenticate } from '../middleware/auth';
 import {
   getDashboardStats,

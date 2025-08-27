@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const asyncErrorHandler_1 = require("../middleware/asyncErrorHandler");
-const studentController_1 = require("../controllers/studentController");
-const router = (0, express_1.Router)();
+var express_1 = require("express");
+var auth_1 = require("../middleware/auth");
+var asyncErrorHandler_1 = require("../middleware/asyncErrorHandler");
+var studentController_1 = require("../controllers/studentController");
+var router = (0, express_1.Router)();
 // Todas las rutas requieren autenticación y rol SLP
 router.use(auth_1.authenticate);
 router.use(auth_1.isSLP);
@@ -19,4 +19,3 @@ router.get('/:id/progress', (0, asyncErrorHandler_1.asyncErrorHandler)(studentCo
 router.post('/:id/assign', (0, asyncErrorHandler_1.asyncErrorHandler)(studentController_1.assignStudentToSLP));
 router.post('/:id/remove', (0, asyncErrorHandler_1.asyncErrorHandler)(studentController_1.removeStudentFromSLP));
 exports.default = router;
-//# sourceMappingURL=students.js.map
