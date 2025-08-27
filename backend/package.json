@@ -4,7 +4,7 @@
   "description": "Backend API para plataforma de terapia del habla virtual",
   "main": "dist/index.js",
   "scripts": {
-    "build": "echo '🔨 Building backend kerbin2...' && tsc src/index.ts --outDir dist && echo '✅ Backend build successful!'",
+    "build": "echo '🔨 Building backend...' && ./node_modules/.bin/tsc src/index.ts --outDir dist && echo '✅ Backend build successful!'",
     "start": "echo '🚀 Starting backend server...' && node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest",
