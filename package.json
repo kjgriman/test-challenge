@@ -4,12 +4,13 @@
   "description": "Plataforma virtual de terapia del habla",
   "private": true,
   "scripts": {
-    "build": "cd frontend && npm run build",
-    "dev": "cd frontend && npm run dev",
-    "install": "cd frontend && npm install",
-    "backend:build": "cd backend && npm run build",
-    "backend:start": "cd backend && npm start",
-    "backend:install": "cd backend && npm install"
+    "build": "cd backend && npm run build",
+    "dev": "cd backend && npm run dev",
+    "install": "cd backend && npm install",
+    "start": "cd backend && npm start",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:install": "cd frontend && npm install"
   },
   "engines": {
     "node": ">=18.0.0"
