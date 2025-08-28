@@ -26,7 +26,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "http://localhost:5173",
+    origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -41,7 +41,7 @@ const USE_IN_MEMORY_DB = process.env['NODE_ENV'] === 'development' && !process.e
 // Middleware de seguridad y parsing
 app.use(helmet());
 app.use(cors({
-  origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "http://localhost:5173",
+  origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173",
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
