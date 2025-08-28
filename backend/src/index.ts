@@ -22,11 +22,27 @@ import { rateLimiter } from './middleware/rateLimiter';
 // Cargar variables de entorno
 dotenv.config();
 
+// Log de todas las variables de entorno relevantes
+console.log('📋 Environment Variables:', {
+  NODE_ENV: process.env['NODE_ENV'],
+  PORT: process.env['PORT'],
+  FRONTEND_URL: process.env['FRONTEND_URL'],
+  VERCEL_URL: process.env['VERCEL_URL'],
+  MONGODB_URI: process.env['MONGODB_URI'] ? '***CONFIGURED***' : 'NOT_SET'
+});
+
 const app = express();
 const server = createServer(app);
+const socketCorsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+
+console.log('🔌 WebSocket CORS Configuration:', {
+  socketCorsOrigin,
+  methods: ["GET", "POST", "OPTIONS"]
+});
+
 const io = new Server(server, {
   cors: {
-    origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173",
+    origin: socketCorsOrigin,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
     credentials: true
@@ -43,8 +59,17 @@ const USE_IN_MEMORY_DB = process.env['NODE_ENV'] === 'development' && !process.e
 app.use(helmet());
 
 // Configuración de CORS más permisiva para desarrollo
+const corsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+
+console.log('🔧 CORS Configuration:', {
+  FRONTEND_URL: process.env['FRONTEND_URL'],
+  VERCEL_URL: process.env['VERCEL_URL'],
+  corsOrigin,
+  NODE_ENV: process.env['NODE_ENV']
+});
+
 app.use(cors({
-  origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173",
+  origin: corsOrigin,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   credentials: true,
@@ -54,12 +79,24 @@ app.use(cors({
 
 // Middleware adicional para manejar preflight OPTIONS
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173");
+  const requestOrigin = req.headers.origin;
+  const allowedOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+  
+  console.log('🌐 CORS Request:', {
+    method: req.method,
+    path: req.path,
+    origin: requestOrigin,
+    allowedOrigin,
+    userAgent: req.get('User-Agent')
+  });
+  
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
+    console.log('✅ Preflight OPTIONS request handled');
     res.sendStatus(200);
   } else {
     next();
