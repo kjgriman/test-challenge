@@ -11,11 +11,14 @@ import {
   ChevronDown,
   Sun,
   Moon,
-  HelpCircle
+  HelpCircle,
+  Check,
+  X
 } from 'lucide-react';
 
 // Importar hooks y store
 import { useAuthStore, useUser, useDisplayName, useProfileInfo } from '../../store/authStore';
+import { useNotifications } from '../../hooks/useNotifications';
 
 // Props del componente Header
 interface HeaderProps {
@@ -35,6 +38,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isMobile }) => {
   const user = useUser();
   const displayName = useDisplayName();
   const profileInfo = useProfileInfo();
+  const { 
+    recentNotifications, 
+    stats, 
+    markAsRead, 
+    deleteNotification, 
+    formatRelativeTime,
+    loadNotifications 
+  } = useNotifications();
 
   // Función para manejar logout
   const handleLogout = () => {
@@ -159,12 +170,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isMobile }) => {
             {/* Notificaciones */}
             <div className="relative">
               <button
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                onClick={() => {
+                  setIsNotificationsOpen(!isNotificationsOpen);
+                  if (!isNotificationsOpen) {
+                    loadNotifications(); // Recargar notificaciones al abrir
+                  }
+                }}
                 className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 relative"
               >
                 <Bell className="h-5 w-5" />
                 {/* Indicador de notificaciones */}
-                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-error-400 ring-2 ring-white"></span>
+                {stats.unread > 0 && (
+                  <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-error-400 ring-2 ring-white"></span>
+                )}
               </button>
 
               {/* Dropdown de notificaciones */}
@@ -177,57 +195,104 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isMobile }) => {
                     transition={{ duration: 0.2 }}
                     className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-large border border-gray-200 py-1 z-50"
                   >
-                    <div className="px-4 py-2 border-b border-gray-200">
+                    <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
                       <h3 className="text-sm font-medium text-gray-900">Notificaciones</h3>
+                      {stats.unread > 0 && (
+                        <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">
+                          {stats.unread} nueva{stats.unread > 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                     <div className="max-h-64 overflow-y-auto">
-                      {/* Lista de notificaciones */}
-                      <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                              <svg className="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                              </svg>
+                      {recentNotifications.length === 0 ? (
+                        <div className="px-4 py-6 text-center">
+                          <Bell className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">No hay notificaciones</p>
+                        </div>
+                      ) : (
+                        recentNotifications.map((notification) => (
+                          <div 
+                            key={notification._id}
+                            className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                              !notification.read ? 'bg-blue-50' : ''
+                            }`}
+                            onClick={() => {
+                              if (!notification.read) {
+                                markAsRead(notification._id);
+                              }
+                              if (notification.actionUrl) {
+                                navigate(notification.actionUrl);
+                                setIsNotificationsOpen(false);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start flex-1">
+                                <div className="flex-shrink-0">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                    notification.type === 'success' ? 'bg-success-100' :
+                                    notification.type === 'warning' ? 'bg-warning-100' :
+                                    notification.type === 'error' ? 'bg-error-100' :
+                                    'bg-primary-100'
+                                  }`}>
+                                    <svg className={`w-4 h-4 ${
+                                      notification.type === 'success' ? 'text-success-600' :
+                                      notification.type === 'warning' ? 'text-warning-600' :
+                                      notification.type === 'error' ? 'text-error-600' :
+                                      'text-primary-600'
+                                    }`} fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="ml-3 flex-1">
+                                  <p className="text-sm text-gray-900 font-medium">
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {formatRelativeTime(notification.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1 ml-2">
+                                {!notification.read && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markAsRead(notification._id);
+                                    }}
+                                    className="p-1 text-gray-400 hover:text-success-600"
+                                    title="Marcar como leída"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteNotification(notification._id);
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-error-600"
+                                  title="Eliminar"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                          <div className="ml-3 flex-1">
-                            <p className="text-sm text-gray-900">
-                              Nueva sesión programada para mañana
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Hace 2 horas
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-success-100 rounded-full flex items-center justify-center">
-                              <svg className="w-4 h-4 text-success-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="ml-3 flex-1">
-                            <p className="text-sm text-gray-900">
-                              Progreso actualizado del estudiante
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Hace 1 día
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                        ))
+                      )}
                     </div>
                     <div className="px-4 py-2 border-t border-gray-200">
                       <Link
                         to="/notifications"
                         className="text-sm text-primary-600 hover:text-primary-500 font-medium"
+                        onClick={() => setIsNotificationsOpen(false)}
                       >
-                        Ver todas las notificaciones
+                        Ver todas las notificaciones ({stats.total})
                       </Link>
                     </div>
                   </motion.div>

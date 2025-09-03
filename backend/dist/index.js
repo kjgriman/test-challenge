@@ -14,21 +14,38 @@ var dashboard_1 = require("./routes/dashboard");
 // import userRoutes from './routes/users';
 var sessions_1 = require("./routes/sessions");
 var students_1 = require("./routes/students");
+var video_1 = require("./routes/video");
 var videoRooms_1 = require("./routes/videoRooms");
+var notifications_1 = require("./routes/notifications");
 // import gameRoutes from './routes/games';
 var socketHandlers_1 = require("./sockets/socketHandlers");
+var videoSocketHandler_1 = require("./sockets/videoSocketHandler");
 // import { Game } from './models/Game'; // Temporarily disabled due to TypeScript errors
 var errorHandler_1 = require("./middleware/errorHandler");
 var rateLimiter_1 = require("./middleware/rateLimiter");
 // Cargar variables de entorno
 dotenv.config();
+// Log de todas las variables de entorno relevantes
+console.log('📋 Environment Variables:', {
+    NODE_ENV: process.env['NODE_ENV'],
+    PORT: process.env['PORT'],
+    FRONTEND_URL: process.env['FRONTEND_URL'],
+    VERCEL_URL: process.env['VERCEL_URL'],
+    MONGODB_URI: process.env['MONGODB_URI'] ? '***CONFIGURED***' : 'NOT_SET'
+});
 var app = express();
 exports.app = app;
 var server = (0, http_1.createServer)(app);
+var socketCorsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+console.log('🔌 WebSocket CORS Configuration:', {
+    socketCorsOrigin: socketCorsOrigin,
+    methods: ["GET", "POST", "OPTIONS"]
+});
 var io = new socket_io_1.Server(server, {
     cors: {
-        origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "http://localhost:5173",
-        methods: ["GET", "POST"],
+        origin: socketCorsOrigin,
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
         credentials: true
     }
 });
@@ -39,10 +56,45 @@ var MONGODB_URI = process.env['MONGODB_URI'] || 'mongodb://127.0.0.1:27017/speec
 var USE_IN_MEMORY_DB = process.env['NODE_ENV'] === 'development' && !process.env['MONGODB_URI'];
 // Middleware de seguridad y parsing
 app.use(helmet());
+// Configuración de CORS más permisiva para desarrollo
+var corsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+console.log('🔧 CORS Configuration:', {
+    FRONTEND_URL: process.env['FRONTEND_URL'],
+    VERCEL_URL: process.env['VERCEL_URL'],
+    corsOrigin: corsOrigin,
+    NODE_ENV: process.env['NODE_ENV']
+});
 app.use(cors({
-    origin: process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "http://localhost:5173",
-    credentials: true
+    origin: corsOrigin,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
+// Middleware adicional para manejar preflight OPTIONS
+app.use(function (req, res, next) {
+    var requestOrigin = req.headers.origin;
+    var allowedOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+    console.log('🌐 CORS Request:', {
+        method: req.method,
+        path: req.path,
+        origin: requestOrigin,
+        allowedOrigin: allowedOrigin,
+        userAgent: req.get('User-Agent')
+    });
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    if (req.method === 'OPTIONS') {
+        console.log('✅ Preflight OPTIONS request handled');
+        res.sendStatus(200);
+    }
+    else {
+        next();
+    }
+});
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Rate limiting para prevenir abuso (solo en producción)
@@ -60,7 +112,9 @@ app.use('/api/dashboard', dashboard_1.default);
 // app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessions_1.default);
 app.use('/api/students', students_1.default);
+app.use('/api/video', video_1.default);
 app.use('/api/video-rooms', videoRooms_1.default);
+app.use('/api/notifications', notifications_1.default);
 // app.use('/api/games', gameRoutes);
 // Health check endpoint
 app.get('/health', function (_req, res) {
@@ -72,6 +126,8 @@ app.get('/health', function (_req, res) {
 });
 // Configurar Socket.io handlers
 (0, socketHandlers_1.setupSocketHandlers)(io);
+// Configurar Video Socket Handler
+var videoSocketHandler = new videoSocketHandler_1.VideoSocketHandler(server);
 // Middleware de manejo de errores (debe ir al final)
 app.use(errorHandler_1.errorHandler);
 // Manejo de rutas no encontradas

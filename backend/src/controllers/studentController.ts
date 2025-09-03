@@ -33,6 +33,8 @@ export const getStudents = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('🔍 getStudents iniciado');
+    
     if (!req.user) {
       throw new ValidationError('Usuario no autenticado');
     }
@@ -40,10 +42,20 @@ export const getStudents = async (
     const slpId = req.user._id;
     const { page = 1, limit = 10, skillLevel, search } = req.query;
 
+    console.log('🔍 getStudents - SLP ID:', slpId);
+    console.log('🔍 getStudents - Query params:', { page, limit, skillLevel, search });
+
+    // Query más flexible: estudiantes que pertenecen al SLP O que no tienen SLP asignado
     let query: any = {
       role: 'child',
-      'child.currentSLP': slpId
+      $or: [
+        { 'child.currentSLP': slpId },
+        { 'child.currentSLP': { $exists: false } },
+        { 'child.currentSLP': null }
+      ]
     };
+
+    console.log('🔍 Query:', JSON.stringify(query, null, 2));
 
     // Filtrar por nivel de habilidad
     if (skillLevel) {
@@ -61,14 +73,22 @@ export const getStudents = async (
 
     const skip = (Number(page) - 1) * Number(limit);
 
+    console.log('🔍 Ejecutando consulta...');
     const students = await User.find(query)
-      .select('firstName lastName email child.skillLevel child.sessionsCompleted child.totalSessionTime child.primaryGoals')
+      .select('firstName lastName email child.skillLevel child.sessionsCompleted child.totalSessionTime child.primaryGoals child.currentSLP')
       .sort({ firstName: 1, lastName: 1 })
       .skip(skip)
       .limit(Number(limit));
 
-    const total = await User.countDocuments(query);
+    console.log('✅ Estudiantes encontrados:', students.length);
+    students.forEach(student => {
+      console.log(`   - ${student.firstName} ${student.lastName} (currentSLP: ${student.child?.currentSLP})`);
+    });
 
+    const total = await User.countDocuments(query);
+    console.log('📊 Total de estudiantes:', total);
+
+    console.log('🔍 Enviando respuesta...');
     sendSuccessResponse(res, {
       students,
       pagination: {
@@ -80,6 +100,7 @@ export const getStudents = async (
     }, 'Estudiantes obtenidos exitosamente');
 
   } catch (error) {
+    console.log('❌ Error en getStudents:', error);
     next(error);
   }
 };

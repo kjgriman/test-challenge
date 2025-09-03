@@ -172,10 +172,10 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                 <span>Sesión: {sessionId}</span>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
-              <GameTimer 
-                timeRemaining={timeRemaining} 
+              <GameTimer
+                timeRemaining={timeRemaining}
                 isActive={gameState.isPlaying && !isPaused}
                 onTimeUp={handleTimeUp}
               />
@@ -197,12 +197,14 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
               <span className="text-lg font-semibold">
                 Ronda: {gameState.round}/{gameState.maxRounds}
               </span>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                gameState.currentTurn === 'slp' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'bg-green-100 text-green-800'
-              }`}>
-                Turno: {gameState.currentTurn === 'slp' ? 'Terapeuta' : 'Niño'}
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  gameState.currentTurn === "slp"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-green-100 text-green-800"
+                }`}
+              >
+                Turno: {gameState.currentTurn === "slp" ? "Terapeuta" : "Niño"}
               </span>
             </div>
 
@@ -234,7 +236,7 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                       <span>Pausar</span>
                     </button>
                   )}
-                  
+
                   <button
                     onClick={startGame}
                     className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
@@ -257,10 +259,21 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                 <div className="h-full flex flex-col items-center justify-center">
                   {/* Palabra actual */}
                   <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-700 mb-4">Palabra a encontrar:</h3>
+                    <h3 className="text-2xl font-bold text-gray-700 mb-4">
+                      Palabra a encontrar:
+                    </h3>
                     <div className="text-6xl font-bold text-blue-600 bg-blue-50 px-8 py-4 rounded-lg">
                       {gameState.gameData.currentWord}
                     </div>
+                    {gameState.gameData.currentImage && (
+                      <div className="mt-4">
+                        <img 
+                          src={gameState.gameData.currentImage} 
+                          alt={gameState.gameData.currentWord}
+                          className="max-w-full h-auto max-h-64 rounded-lg shadow-md"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Opciones */}
@@ -269,17 +282,21 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                       <button
                         key={index}
                         onClick={() => handleAnswer(option)}
-                        disabled={gameState.currentTurn !== user?.role || selectedAnswer !== null}
+                        disabled={
+                          gameState.currentTurn !== user?.role ||
+                          selectedAnswer !== null
+                        }
                         className={`p-4 rounded-lg border-2 text-lg font-medium transition-all ${
                           selectedAnswer === option
                             ? option === gameState.gameData.correctAnswer
-                              ? 'bg-green-500 text-white border-green-600'
-                              : 'bg-red-500 text-white border-red-600'
-                            : 'bg-gray-100 hover:bg-gray-200 border-gray-300'
+                              ? "bg-green-500 text-white border-green-600"
+                              : "bg-red-500 text-white border-red-600"
+                            : "bg-gray-100 hover:bg-gray-200 border-gray-300"
                         } ${
-                          gameState.currentTurn !== user?.role || selectedAnswer !== null
-                            ? 'opacity-50 cursor-not-allowed'
-                            : 'hover:scale-105'
+                          gameState.currentTurn !== user?.role ||
+                          selectedAnswer !== null
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:scale-105"
                         }`}
                       >
                         {option}
@@ -290,18 +307,25 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                   {/* Mensaje de turno */}
                   <div className="mt-6 text-center">
                     {gameState.currentTurn === user?.role ? (
-                      <p className="text-green-600 font-medium">¡Es tu turno! Selecciona la respuesta correcta.</p>
+                      <p className="text-green-600 font-medium">
+                        ¡Es tu turno! Selecciona la respuesta correcta.
+                      </p>
                     ) : (
-                      <p className="text-gray-600">Esperando al otro jugador...</p>
+                      <p className="text-gray-600">
+                        Esperando al otro jugador...
+                      </p>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
-                    <h3 className="text-2xl font-bold text-gray-700 mb-4">Juego de Palabras</h3>
+                    <h3 className="text-2xl font-bold text-gray-700 mb-4">
+                      Juego de Palabras
+                    </h3>
                     <p className="text-gray-600 mb-6">
-                      Empareja las palabras con las imágenes correctas. Los turnos alternan entre participantes.
+                      Empareja las palabras con las imágenes correctas. Los
+                      turnos alternan entre participantes.
                     </p>
                     <button
                       onClick={startGame}
@@ -322,21 +346,25 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Estado:</span>
-                    <span className={`font-medium ${
-                      gameState.isPlaying ? 'text-green-600' : 'text-gray-600'
-                    }`}>
-                      {gameState.isPlaying ? 'Jugando' : 'Esperando'}
+                    <span
+                      className={`font-medium ${
+                        gameState.isPlaying ? "text-green-600" : "text-gray-600"
+                      }`}
+                    >
+                      {gameState.isPlaying ? "Jugando" : "Esperando"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Turno actual:</span>
                     <span className="font-medium">
-                      {gameState.currentTurn === 'slp' ? 'Terapeuta' : 'Niño'}
+                      {gameState.currentTurn === "slp" ? "Terapeuta" : "Niño"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Ronda:</span>
-                    <span className="font-medium">{gameState.round}/{gameState.maxRounds}</span>
+                    <span className="font-medium">
+                      {gameState.round}/{gameState.maxRounds}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -358,7 +386,9 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
 
               {/* Instrucciones */}
               <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-2 text-blue-800">Instrucciones</h3>
+                <h3 className="text-lg font-semibold mb-2 text-blue-800">
+                  Instrucciones
+                </h3>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• El terapeuta inicia el juego</li>
                   <li>• Se muestran palabras e imágenes</li>

@@ -40,7 +40,6 @@ exports.setupSocketHandlers = void 0;
 var TherapySession_1 = require("../models/TherapySession");
 var User_1 = require("../models/User");
 var jwt = require("jsonwebtoken");
-var videoRoomHandlers_1 = require("./videoRoomHandlers");
 var gameHandlers_1 = require("./gameHandlers");
 // Almacenar estados de juegos activos
 var activeGames = new Map();
@@ -98,8 +97,6 @@ var verifySessionAccess = function (socket, sessionId) { return __awaiter(void 0
 }); };
 // Configurar manejadores de WebSocket
 var setupSocketHandlers = function (io) {
-    // Configurar handlers de salas de video
-    (0, videoRoomHandlers_1.setupVideoRoomHandlers)(io);
     // Configurar handlers de juegos
     var gameHandlers = new gameHandlers_1.default(io);
     gameHandlers.initialize();

@@ -226,6 +226,7 @@ export const login = async (
       throw new AuthenticationError('Credenciales inválidas');
     }
     
+    
     // Verificar contraseña
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {

@@ -2,59 +2,70 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IVideoRoom extends Document {
   roomId: string;
-  sessionId: string;
-  title: string;
+  name: string;
+  description?: string;
   createdBy: mongoose.Types.ObjectId;
+  isActive: boolean;
+  startedAt?: Date;
+  endedAt?: Date;
+  maxParticipants: number;
   participants: Array<{
     userId: mongoose.Types.ObjectId;
     name: string;
-    role: 'slp' | 'child';
+    role: 'slp' | 'child' | 'guest';
     joinedAt: Date;
     isActive: boolean;
+    isMuted: boolean;
+    isVideoOff: boolean;
   }>;
-  isActive: boolean;
-  maxParticipants: number;
+  settings: {
+    allowScreenShare: boolean;
+    allowChat: boolean;
+    allowRecording: boolean;
+    requireApproval: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
-  
-  // Métodos de instancia
-  addParticipant(userId: mongoose.Types.ObjectId, name: string, role: 'slp' | 'child'): Promise<IVideoRoom>;
-  removeParticipant(userId: mongoose.Types.ObjectId): Promise<IVideoRoom>;
-  getActiveParticipants(): Array<{
-    userId: mongoose.Types.ObjectId;
-    name: string;
-    role: 'slp' | 'child';
-    joinedAt: Date;
-    isActive: boolean;
-  }>;
 }
 
-// Interfaz para métodos estáticos
-export interface IVideoRoomModel extends mongoose.Model<IVideoRoom> {
-  generateRoomId(): string;
-}
-
-const VideoRoomSchema = new Schema<IVideoRoom>({
+const videoRoomSchema = new Schema<IVideoRoom>({
   roomId: {
     type: String,
     required: true,
     unique: true,
     index: true
   },
-  sessionId: {
+  name: {
     type: String,
     required: true,
-    index: true
+    trim: true,
+    maxlength: 100
   },
-  title: {
+  description: {
     type: String,
-    required: true,
-    default: 'Sala de Terapia'
+    trim: true,
+    maxlength: 500
   },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  startedAt: {
+    type: Date
+  },
+  endedAt: {
+    type: Date
+  },
+  maxParticipants: {
+    type: Number,
+    default: 10,
+    min: 1,
+    max: 50
   },
   participants: [{
     userId: {
@@ -68,8 +79,8 @@ const VideoRoomSchema = new Schema<IVideoRoom>({
     },
     role: {
       type: String,
-      enum: ['slp', 'child'],
-      required: true
+      enum: ['slp', 'child', 'guest'],
+      default: 'guest'
     },
     joinedAt: {
       type: Date,
@@ -78,59 +89,138 @@ const VideoRoomSchema = new Schema<IVideoRoom>({
     isActive: {
       type: Boolean,
       default: true
+    },
+    isMuted: {
+      type: Boolean,
+      default: false
+    },
+    isVideoOff: {
+      type: Boolean,
+      default: false
     }
   }],
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  maxParticipants: {
-    type: Number,
-    default: 4
+  settings: {
+    allowScreenShare: {
+      type: Boolean,
+      default: true
+    },
+    allowChat: {
+      type: Boolean,
+      default: true
+    },
+    allowRecording: {
+      type: Boolean,
+      default: false
+    },
+    requireApproval: {
+      type: Boolean,
+      default: false
+    }
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: {
+    transform: function(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
 });
 
+// Método para generar un roomId aleatorio
+(videoRoomSchema.statics as any).generateRoomId = function(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+// Método para verificar si el roomId es único
+(videoRoomSchema.statics as any).isRoomIdUnique = async function(roomId: string): Promise<boolean> {
+  const existingRoom = await this.findOne({ roomId });
+  return !existingRoom;
+};
+
+// Método para iniciar la sala
+(videoRoomSchema.methods as any).startRoom = async function(): Promise<void> {
+  (this as any).isActive = true;
+  (this as any).startedAt = new Date();
+  await (this as any).save();
+};
+
+// Método para finalizar la sala
+(videoRoomSchema.methods as any).endRoom = async function(): Promise<void> {
+  (this as any).isActive = false;
+  (this as any).endedAt = new Date();
+  // Marcar todos los participantes como inactivos
+  (this as any).participants.forEach((participant: any) => {
+    participant.isActive = false;
+  });
+  await (this as any).save();
+};
+
 // Método para agregar participante
-VideoRoomSchema.methods.addParticipant = function(userId: mongoose.Types.ObjectId, name: string, role: 'slp' | 'child') {
-  const existingParticipant = (this as any).participants.find((p: any) => p.userId.toString() === userId.toString());
+(videoRoomSchema.methods as any).addParticipant = async function(
+  userId: mongoose.Types.ObjectId,
+  name: string,
+  role: 'slp' | 'child' | 'guest' = 'guest'
+): Promise<void> {
+  const existingParticipant = (this as any).participants.find(
+    (p: any) => p.userId.toString() === userId.toString()
+  );
   
   if (existingParticipant) {
     // Actualizar participante existente
     existingParticipant.isActive = true;
     existingParticipant.joinedAt = new Date();
   } else {
+    // Verificar límite de participantes
+    const activeParticipants = (this as any).participants.filter((p: any) => p.isActive).length;
+    if (activeParticipants >= (this as any).maxParticipants) {
+      throw new Error('La sala ha alcanzado el límite máximo de participantes');
+    }
+    
     // Agregar nuevo participante
     (this as any).participants.push({
       userId,
       name,
       role,
       joinedAt: new Date(),
-      isActive: true
+      isActive: true,
+      isMuted: false,
+      isVideoOff: false
     });
   }
   
-  return (this as any).save();
+  await (this as any).save();
 };
 
 // Método para remover participante
-VideoRoomSchema.methods.removeParticipant = function(userId: mongoose.Types.ObjectId) {
-  const participant = (this as any).participants.find((p: any) => p.userId.toString() === userId.toString());
+(videoRoomSchema.methods as any).removeParticipant = async function(
+  userId: mongoose.Types.ObjectId
+): Promise<void> {
+  const participant = (this as any).participants.find(
+    (p: any) => p.userId.toString() === userId.toString()
+  );
   if (participant) {
     participant.isActive = false;
+    await (this as any).save();
   }
-  return (this as any).save();
 };
 
 // Método para obtener participantes activos
-VideoRoomSchema.methods.getActiveParticipants = function() {
+(videoRoomSchema.methods as any).getActiveParticipants = function(): any[] {
   return (this as any).participants.filter((p: any) => p.isActive);
 };
 
-// Método estático para generar roomId único
-VideoRoomSchema.statics.generateRoomId = function(): string {
-  return `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+// Método para obtener el enlace de la sala
+(videoRoomSchema.methods as any).getShareLink = function(): string {
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return `${baseUrl}/video-rooms/join/${(this as any).roomId}`;
 };
 
-export const VideoRoom = mongoose.model<IVideoRoom, IVideoRoomModel>('VideoRoom', VideoRoomSchema);
+export const VideoRoom = mongoose.model<IVideoRoom>('VideoRoom', videoRoomSchema);

@@ -40,14 +40,34 @@ export interface ISessionMetrics {
   engagementScore: number; // 1-10
 }
 
+// Interfaz para participantes de video
+export interface IVideoParticipant {
+  userId: mongoose.Types.ObjectId;
+  name: string;
+  role: 'slp' | 'child';
+  joinedAt: Date;
+  isActive: boolean;
+  isMuted: boolean;
+  isVideoOff: boolean;
+  connectionId?: string; // ID de conexión WebRTC
+}
+
 // Interfaz para el documento de sesión
 export interface ITherapySession extends Document {
   slpId: mongoose.Types.ObjectId;
   childId: mongoose.Types.ObjectId;
   status: SessionStatus;
+  sessionType: 'therapy' | 'evaluation' | 'game';
   scheduledDate: Date;
   startTime?: Date;
   endTime?: Date;
+  
+  // Video conferencia
+  videoEnabled: boolean;
+  videoParticipants: IVideoParticipant[];
+  videoRoomId?: string; // ID único de la sala de video
+  videoStartedAt?: Date;
+  videoEndedAt?: Date;
   
   // Actividades y resultados
   activities: {
@@ -84,6 +104,11 @@ export interface ITherapySession extends Document {
   getDuration(): number; // en minutos
   getAccuracy(): number;
   isActive(): boolean;
+  startVideo(): Promise<void>;
+  endVideo(): Promise<void>;
+  addVideoParticipant(userId: mongoose.Types.ObjectId, name: string, role: 'slp' | 'child'): Promise<void>;
+  removeVideoParticipant(userId: mongoose.Types.ObjectId): Promise<void>;
+  getActiveVideoParticipants(): IVideoParticipant[];
 }
 
 // Esquema de Mongoose
@@ -104,6 +129,12 @@ const therapySessionSchema = new Schema<ITherapySession>({
     type: String,
     enum: Object.values(SessionStatus),
     default: SessionStatus.SCHEDULED,
+    required: true
+  },
+  sessionType: {
+    type: String,
+    enum: ['therapy', 'evaluation', 'game'],
+    default: 'therapy',
     required: true
   },
   scheduledDate: {
@@ -146,6 +177,58 @@ const therapySessionSchema = new Schema<ITherapySession>({
       },
       message: 'La hora de fin debe ser después de la hora de inicio'
     }
+  },
+  
+  // Video conferencia
+  videoEnabled: {
+    type: Boolean,
+    default: false
+  },
+  videoParticipants: [{
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['slp', 'child'],
+      required: true
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    isMuted: {
+      type: Boolean,
+      default: false
+    },
+    isVideoOff: {
+      type: Boolean,
+      default: false
+    },
+    connectionId: {
+      type: String
+    }
+  }],
+  videoRoomId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  videoStartedAt: {
+    type: Date
+  },
+  videoEndedAt: {
+    type: Date
   },
   
   // Actividades planificadas
@@ -314,10 +397,18 @@ const therapySessionSchema = new Schema<ITherapySession>({
   timestamps: true,
   toJSON: {
     transform: function(_doc: any, ret: any) {
-      // Agregar campos calculados
-      ret.duration = (this as any).getDuration();
-      ret.accuracy = (this as any).getAccuracy();
-      ret.isActive = (this as any).isActive();
+      // Agregar campos calculados de forma segura
+      try {
+        ret.duration = (this as any)?.getDuration?.() || ret.duration || 0;
+        ret.accuracy = (this as any)?.getAccuracy?.() || ret.accuracy || 0;
+        ret.isActive = (this as any)?.isActive?.() || false;
+      } catch (error) {
+        console.log('⚠️ Error en transform del modelo TherapySession:', error);
+        // Valores por defecto si hay error
+        ret.duration = ret.duration || 0;
+        ret.accuracy = ret.accuracy || 0;
+        ret.isActive = false;
+      }
       return ret;
     }
   }
@@ -370,6 +461,69 @@ therapySessionSchema.index({ status: 1, scheduledDate: 1 });
 // Método para verificar si la sesión está activa
 (therapySessionSchema.methods as any).isActive = function(): boolean {
   return (this as any).status === SessionStatus.IN_PROGRESS;
+};
+
+// Métodos de video conferencia
+(therapySessionSchema.methods as any).startVideo = async function(): Promise<void> {
+  (this as any).videoEnabled = true;
+  (this as any).videoStartedAt = new Date();
+  (this as any).videoRoomId = `session_${(this as any)._id}_${Date.now()}`;
+  await (this as any).save();
+};
+
+(therapySessionSchema.methods as any).endVideo = async function(): Promise<void> {
+  (this as any).videoEnabled = false;
+  (this as any).videoEndedAt = new Date();
+  // Marcar todos los participantes como inactivos
+  (this as any).videoParticipants.forEach((participant: any) => {
+    participant.isActive = false;
+  });
+  await (this as any).save();
+};
+
+(therapySessionSchema.methods as any).addVideoParticipant = async function(
+  userId: mongoose.Types.ObjectId, 
+  name: string, 
+  role: 'slp' | 'child'
+): Promise<void> {
+  const existingParticipant = (this as any).videoParticipants.find(
+    (p: any) => p.userId.toString() === userId.toString()
+  );
+  
+  if (existingParticipant) {
+    // Actualizar participante existente
+    existingParticipant.isActive = true;
+    existingParticipant.joinedAt = new Date();
+  } else {
+    // Agregar nuevo participante
+    (this as any).videoParticipants.push({
+      userId,
+      name,
+      role,
+      joinedAt: new Date(),
+      isActive: true,
+      isMuted: false,
+      isVideoOff: false
+    });
+  }
+  
+  await (this as any).save();
+};
+
+(therapySessionSchema.methods as any).removeVideoParticipant = async function(
+  userId: mongoose.Types.ObjectId
+): Promise<void> {
+  const participant = (this as any).videoParticipants.find(
+    (p: any) => p.userId.toString() === userId.toString()
+  );
+  if (participant) {
+    participant.isActive = false;
+    await (this as any).save();
+  }
+};
+
+(therapySessionSchema.methods as any).getActiveVideoParticipants = function(): any[] {
+  return (this as any).videoParticipants.filter((p: any) => p.isActive);
 };
 
 // Middleware pre-save para calcular métricas

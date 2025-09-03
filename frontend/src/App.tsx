@@ -17,9 +17,18 @@ const LoginPage = React.lazy(() => import('./pages/Login'));
 // const RegisterChildPage = React.lazy(() => import('./pages/auth/RegisterChildPage'));
 const DashboardPage = React.lazy(() => import('./pages/Dashboard'));
 const SessionsPage = React.lazy(() => import('./pages/Sessions'));
+const SessionsActivePage = React.lazy(() => import('./pages/SessionsActive'));
+const SessionsScheduledPage = React.lazy(() => import('./pages/SessionsScheduled'));
+const SessionsHistoryPage = React.lazy(() => import('./pages/SessionsHistory'));
 const StudentsPage = React.lazy(() => import('./pages/Students'));
+const NotificationsPage = React.lazy(() => import('./pages/Notifications'));
+const GamesPage = React.lazy(() => import('./pages/Games'));
+const CreateGamePage = React.lazy(() => import('./pages/CreateGame'));
+const ReportsPage = React.lazy(() => import('./pages/Reports'));
+const ReportsProgressPage = React.lazy(() => import('./pages/ReportsProgress'));
+const ReportsSessionsPage = React.lazy(() => import('./pages/ReportsSessions'));
+const ReportsGamesPage = React.lazy(() => import('./pages/ReportsGames'));
 const VideoRoomsPage = React.lazy(() => import('./pages/VideoRooms'));
-const JoinRoomPage = React.lazy(() => import('./pages/JoinRoom'));
 // const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage'));
 // const SessionPage = React.lazy(() => import('./pages/sessions/SessionPage'));
 // const GamesPage = React.lazy(() => import('./pages/games/GamesPage'));
@@ -183,6 +192,45 @@ const App: React.FC = () => {
             }
           />
 
+          <Route
+            path="/sessions/active"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <SessionsActivePage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/sessions/scheduled"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <SessionsScheduledPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/sessions/history"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <SessionsHistoryPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
           {/* <Route
             path="/sessions/:sessionId"
             element={
@@ -210,32 +258,19 @@ const App: React.FC = () => {
             }
           />
 
-                     {/* Rutas de salas de videoconferencia */}
-           <Route
-             path="/video-rooms"
-             element={
-               <ProtectedRoute>
-                 <Layout>
-                   <Suspense fallback={<PageLoader />}>
-                     <VideoRoomsPage />
-                   </Suspense>
-                 </Layout>
-               </ProtectedRoute>
-             }
-           />
-
-           <Route
-             path="/join-room"
-             element={
-               <ProtectedRoute>
-                 <Layout>
-                   <Suspense fallback={<PageLoader />}>
-                     <JoinRoomPage />
-                   </Suspense>
-                 </Layout>
-               </ProtectedRoute>
-             }
-           />
+          {/* Rutas de notificaciones */}
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <NotificationsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* <Route
             path="/students/:studentId"
@@ -251,7 +286,7 @@ const App: React.FC = () => {
           /> */}
 
           {/* Rutas de juegos */}
-          {/* <Route
+          <Route
             path="/games"
             element={
               <ProtectedRoute>
@@ -265,17 +300,84 @@ const App: React.FC = () => {
           />
 
           <Route
-            path="/games/:gameId"
+            path="/games/create"
             element={
               <ProtectedRoute>
                 <Layout>
                   <Suspense fallback={<PageLoader />}>
-                    <GamePage />
+                    <CreateGamePage />
                   </Suspense>
                 </Layout>
               </ProtectedRoute>
             }
-          /> */}
+          />
+
+          {/* Rutas de reportes */}
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <ReportsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reports/progress"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <ReportsProgressPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reports/sessions"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <ReportsSessionsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reports/games"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <ReportsGamesPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Rutas de video conferencia */}
+          <Route
+            path="/video-rooms"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <VideoRoomsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Ruta 404 */}
           {/* <Route

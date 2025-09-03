@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 // Tipos
 interface Student {
   _id: string;
@@ -43,6 +45,8 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
 }) => {
   console.log('🎭 CreateSessionModal renderizado');
   console.log('🎭 isOpen:', isOpen);
+  console.log('🎭 Modal props:', { isOpen, onClose: typeof onClose, onSuccess: typeof onSuccess });
+  
   const { token } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,14 +71,15 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
 
     try {
       setLoadingStudents(true);
-      const response = await fetch('/api/students', {
+      const response = await fetch(`${BACKEND_URL}/students`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
+      
       if (response.ok) {
         const data = await response.json();
+        console.log("data", data.data.students);
         setStudents(data.data.students || []);
       }
     } catch (err) {
@@ -153,7 +158,7 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/sessions', {
+      const response = await fetch(`${BACKEND_URL}/sessions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -186,7 +191,10 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-            onClick={onClose}
+            onClick={() => {
+              console.log('🔘 Overlay clickeado');
+              onClose();
+            }}
           />
 
           {/* Modal */}
@@ -195,7 +203,8 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative z-10"
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -206,7 +215,10 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
                   </h2>
                 </div>
                 <button
-                  onClick={onClose}
+                  onClick={() => {
+                    console.log('🔘 Botón X clickeado');
+                    onClose();
+                  }}
                   className="text-gray-400 hover:text-gray-500 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <X className="h-5 w-5" />

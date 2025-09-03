@@ -168,28 +168,29 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, userRole }) =>
         },
       ],
     },
-    {
-      name: 'Comunicación',
-      href: '/communication',
-      icon: MessageSquare,
-      children: [
-        {
-          name: 'Chat con Padres',
-          href: '/communication/chat',
-          icon: MessageSquare,
-        },
-        {
-          name: 'Notificaciones',
-          href: '/communication/notifications',
-          icon: Bell,
-        },
-        {
-          name: 'Correos',
-          href: '/communication/emails',
-          icon: FileText,
-        },
-      ],
-    },
+    // Sección de comunicación oculta - las notificaciones están disponibles en el header
+    // {
+    //   name: 'Comunicación',
+    //   href: '/communication',
+    //   icon: MessageSquare,
+    //   children: [
+    //     {
+    //       name: 'Chat con Padres',
+    //       href: '/communication/chat',
+    //       icon: MessageSquare,
+    //     },
+    //     {
+    //       name: 'Notificaciones',
+    //       href: '/communication/notifications',
+    //       icon: Bell,
+    //     },
+    //     {
+    //       name: 'Correos',
+    //       href: '/communication/emails',
+    //       icon: FileText,
+    //     },
+    //   ],
+    // },
   ];
 
   // Menú para Child
@@ -265,23 +266,24 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, userRole }) =>
         },
       ],
     },
-    {
-      name: 'Comunicación',
-      href: '/communication',
-      icon: MessageSquare,
-      children: [
-        {
-          name: 'Chat con Terapeuta',
-          href: '/communication/chat',
-          icon: MessageSquare,
-        },
-        {
-          name: 'Mensajes',
-          href: '/communication/messages',
-          icon: MessageSquare,
-        },
-      ],
-    },
+    // Sección de comunicación oculta - las notificaciones están disponibles en el header
+    // {
+    //   name: 'Comunicación',
+    //   href: '/communication',
+    //   icon: MessageSquare,
+    //   children: [
+    //     {
+    //       name: 'Chat con Terapeuta',
+    //       href: '/communication/chat',
+    //       icon: MessageSquare,
+    //     },
+    //     {
+    //       name: 'Mensajes',
+    //       href: '/communication/messages',
+    //       icon: MessageSquare,
+    //     },
+    //   ],
+    // },
   ];
 
   // Seleccionar menú basado en el rol

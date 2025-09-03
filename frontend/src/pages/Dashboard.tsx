@@ -17,7 +17,6 @@ import {
 // Importar hooks y store
 import { useUserRole, useProfileInfo, useAuthStore } from '../store/authStore';
 import CreateSessionModal from '../components/modals/CreateSessionModal';
-import VideoCallModal from '../components/video/VideoCallModal';
 
 // Tipos para los datos del dashboard
 interface DashboardStats {
@@ -118,7 +117,6 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showVideoCallModal, setShowVideoCallModal] = useState(false);
 
   // Función para cargar datos del dashboard
   const loadDashboardData = async () => {
@@ -274,16 +272,6 @@ const Dashboard: React.FC = () => {
               <Plus className="w-4 h-4 mr-2" />
               Nueva Sesión
             </button>
-                         <button 
-               className="btn-secondary"
-               onClick={() => {
-                 console.log('📞 Botón Iniciar Llamada clickeado');
-                 setShowVideoCallModal(true);
-               }}
-             >
-               <Video className="w-4 h-4 mr-2" />
-               Iniciar Llamada
-             </button>
           </div>
         </div>
       </motion.div>
@@ -511,26 +499,6 @@ const Dashboard: React.FC = () => {
              loadDashboardData(); // Recargar datos del dashboard
              setShowCreateModal(false);
            }}
-         />
-
-         {/* Modal de videollamada */}
-         <VideoCallModal
-           isOpen={showVideoCallModal}
-           onClose={() => setShowVideoCallModal(false)}
-           sessionId={`session-${Date.now()}`}
-           sessionTitle="Sesión de Terapia Virtual"
-           participants={[
-             {
-               id: '1',
-               name: profileInfo?.title || 'Terapeuta',
-               role: 'slp'
-             },
-             {
-               id: '2',
-               name: 'Estudiante',
-               role: 'child'
-             }
-           ]}
          />
     </div>
   );

@@ -3,6 +3,7 @@ import { TherapySession, SessionStatus } from '../models/TherapySession';
 import { User } from '../models/User';
 import { sendSuccessResponse } from '../utils/responseUtils';
 import { ValidationError, NotFoundError } from '../utils/errors';
+import { NotificationService } from '../services/NotificationService';
 
 // Tipos para las sesiones
 interface CreateSessionData {
@@ -30,6 +31,10 @@ export const createSession = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('🎯 createSession iniciado');
+    console.log('👤 Usuario:', req.user);
+    console.log('📦 Body:', req.body);
+    
     if (!req.user) {
       throw new ValidationError('Usuario no autenticado');
     }
@@ -37,22 +42,30 @@ export const createSession = async (
     const slpId = req.user._id;
     const sessionData: CreateSessionData = req.body;
 
+    console.log('🔍 Verificando estudiante:', sessionData.childId);
+
     // Validar que el niño existe
     const child = await User.findById(sessionData.childId);
     if (!child || child.role !== 'child') {
+      console.log('❌ Estudiante no encontrado o rol incorrecto:', child);
       throw new NotFoundError('Estudiante no encontrado');
     }
 
+    console.log('✅ Estudiante encontrado:', child.firstName, child.lastName);
+
     // Validar que la fecha no sea en el pasado
-    if (sessionData.scheduledDate < new Date()) {
+    const scheduledDate = new Date(sessionData.scheduledDate);
+    if (scheduledDate < new Date()) {
       throw new ValidationError('La fecha programada no puede ser en el pasado');
     }
+
+    console.log('📅 Fecha validada:', scheduledDate);
 
     // Crear la sesión
     const session = new TherapySession({
       slpId,
       childId: sessionData.childId,
-      scheduledDate: sessionData.scheduledDate,
+      scheduledDate: scheduledDate,
       duration: sessionData.duration,
       sessionType: sessionData.sessionType,
       notes: sessionData.notes,
@@ -60,15 +73,26 @@ export const createSession = async (
       status: SessionStatus.SCHEDULED
     });
 
+    console.log('💾 Guardando sesión...');
     await session.save();
 
     // Populate para obtener información completa
     await session.populate('childId', 'firstName lastName');
     await session.populate('slpId', 'firstName lastName');
 
+    // Crear notificaciones para los usuarios involucrados
+    try {
+      await NotificationService.notifySessionCreated(session._id.toString());
+    } catch (notificationError) {
+      console.log('⚠️ Error creando notificaciones:', notificationError);
+      // No fallar la operación principal por errores de notificación
+    }
+
+    console.log('✅ Sesión creada exitosamente:', session._id);
     sendSuccessResponse(res, session, 'Sesión creada exitosamente', 201);
 
   } catch (error) {
+    console.log('❌ Error en createSession:', error);
     next(error);
   }
 };
@@ -83,6 +107,8 @@ export const getSessions = async (
     if (!req.user) {
       throw new ValidationError('Usuario no autenticado');
     }
+    console.log('xxxxxxxxxxxxxxx');
+    
 
     const userId = req.user._id;
     const userRole = req.user.role;
@@ -110,6 +136,8 @@ export const getSessions = async (
       .sort({ scheduledDate: -1 })
       .skip(skip)
       .limit(Number(limit));
+      console.log('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',sessions);
+      
 
     const total = await TherapySession.countDocuments(query);
 
@@ -243,6 +271,14 @@ export const deleteSession = async (
       throw new ValidationError('Solo se pueden eliminar sesiones programadas');
     }
 
+    // Crear notificaciones antes de eliminar la sesión
+    try {
+      await NotificationService.notifySessionCancelled(session._id.toString(), 'Sesión eliminada por el terapeuta');
+    } catch (notificationError) {
+      console.log('⚠️ Error creando notificaciones:', notificationError);
+      // No fallar la operación principal por errores de notificación
+    }
+
     await TherapySession.findByIdAndDelete(sessionId);
 
     sendSuccessResponse(res, null, 'Sesión eliminada exitosamente');
@@ -355,6 +391,14 @@ export const startSession = async (
     session.startTime = new Date();
     await session.save();
 
+    // Crear notificaciones para los usuarios involucrados
+    try {
+      await NotificationService.notifySessionStarted(session._id.toString());
+    } catch (notificationError) {
+      console.log('⚠️ Error creando notificaciones:', notificationError);
+      // No fallar la operación principal por errores de notificación
+    }
+
     sendSuccessResponse(res, session, 'Sesión iniciada exitosamente');
 
   } catch (error) {
@@ -369,6 +413,11 @@ export const endSession = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('🎯 endSession iniciado');
+    console.log('👤 Usuario:', req.user);
+    console.log('📦 Body:', req.body);
+    console.log('🔗 Params:', req.params);
+    
     if (!req.user) {
       throw new ValidationError('Usuario no autenticado');
     }
@@ -377,21 +426,41 @@ export const endSession = async (
     const slpId = req.user._id;
     const { notes, gamesPlayed, accuracy } = req.body;
 
+    console.log('🆔 Session ID:', sessionId);
+    console.log('👨‍⚕️ SLP ID:', slpId);
+    console.log('📝 Notes:', notes);
+    console.log('🎮 Games Played:', gamesPlayed);
+    console.log('🎯 Accuracy:', accuracy);
+
     const session = await TherapySession.findById(sessionId);
 
     if (!session) {
       throw new NotFoundError('Sesión no encontrada');
     }
+    
+    console.log('📋 Sesión encontrada:', {
+      _id: session._id,
+      status: session.status,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      duration: session.duration,
+      slpId: session.slpId,
+      childId: session.childId
+    });
 
     // Verificar que el SLP es el propietario de la sesión
     if (session.slpId.toString() !== slpId.toString()) {
+      console.log('❌ Error de permisos - SLP ID de sesión:', session.slpId.toString(), 'vs SLP ID del usuario:', slpId.toString());
       throw new ValidationError('No tienes permisos para finalizar esta sesión');
     }
 
     // Verificar que la sesión esté en progreso
     if (session.status !== SessionStatus.IN_PROGRESS) {
+      console.log('❌ Error de estado - Estado actual:', session.status, 'vs Estado requerido:', SessionStatus.IN_PROGRESS);
       throw new ValidationError('Solo se pueden finalizar sesiones en progreso');
     }
+
+    console.log('✅ Validaciones pasadas, actualizando sesión...');
 
     // Actualizar sesión
     session.status = SessionStatus.COMPLETED;
@@ -400,16 +469,56 @@ export const endSession = async (
     if (gamesPlayed !== undefined) session.gamesPlayed = gamesPlayed;
     if (accuracy !== undefined) session.accuracy = accuracy;
 
+    console.log('⏰ Hora de fin establecida:', session.endTime);
+    console.log('📝 Notas actualizadas:', session.notes);
+    console.log('🎮 Juegos jugados actualizados:', session.gamesPlayed);
+    console.log('🎯 Precisión actualizada:', session.accuracy);
+
     // Calcular duración real
     if (session.startTime && session.endTime) {
-      session.duration = Math.round((session.endTime.getTime() - session.startTime.getTime()) / 60000);
+      const startTimeMs = session.startTime.getTime();
+      const endTimeMs = session.endTime.getTime();
+      const timeDiffMs = endTimeMs - startTimeMs;
+      const calculatedDuration = Math.round(timeDiffMs / 60000);
+      
+      console.log('⏱️ Cálculo de duración:');
+      console.log('   - Hora de inicio:', session.startTime);
+      console.log('   - Hora de fin:', session.endTime);
+      console.log('   - Diferencia en ms:', timeDiffMs);
+      console.log('   - Duración calculada (minutos):', calculatedDuration);
+      
+      // Verificar que la duración no exceda el límite máximo (3 horas = 180 minutos)
+      if (calculatedDuration > 180) {
+        console.log('❌ Duración excede límite - Calculada:', calculatedDuration, 'minutos vs Límite:', 180, 'minutos');
+        console.log('⚠️ Sesión iniciada hace mucho tiempo, estableciendo duración máxima');
+        
+        // Para sesiones que se iniciaron hace mucho tiempo, establecer la duración máxima
+        session.duration = 180;
+        console.log('✅ Duración establecida al límite máximo:', session.duration, 'minutos');
+      } else {
+        session.duration = calculatedDuration;
+        console.log('✅ Duración establecida:', session.duration, 'minutos');
+      }
+    } else {
+      console.log('⚠️ No se pudo calcular duración - startTime:', session.startTime, 'endTime:', session.endTime);
     }
 
+    console.log('💾 Guardando sesión...');
     await session.save();
+    console.log('✅ Sesión guardada exitosamente');
+
+    // Crear notificaciones para los usuarios involucrados
+    try {
+      await NotificationService.notifySessionCompleted(session._id.toString(), accuracy);
+    } catch (notificationError) {
+      console.log('⚠️ Error creando notificaciones:', notificationError);
+      // No fallar la operación principal por errores de notificación
+    }
 
     sendSuccessResponse(res, session, 'Sesión finalizada exitosamente');
 
   } catch (error) {
+    console.log('❌ Error en endSession:', error);
     next(error);
   }
 };

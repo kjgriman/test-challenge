@@ -12,9 +12,12 @@ import dashboardRoutes from './routes/dashboard';
 // import userRoutes from './routes/users';
 import sessionRoutes from './routes/sessions';
 import studentRoutes from './routes/students';
+import videoRoutes from './routes/video';
 import videoRoomRoutes from './routes/videoRooms';
+import notificationRoutes from './routes/notifications';
 // import gameRoutes from './routes/games';
 import { setupSocketHandlers } from './sockets/socketHandlers';
+import { VideoSocketHandler } from './sockets/videoSocketHandler';
 // import { Game } from './models/Game'; // Temporarily disabled due to TypeScript errors
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
@@ -122,7 +125,9 @@ app.use('/api/dashboard', dashboardRoutes);
 // app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/video', videoRoutes);
 app.use('/api/video-rooms', videoRoomRoutes);
+app.use('/api/notifications', notificationRoutes);
 // app.use('/api/games', gameRoutes);
 
 // Health check endpoint
@@ -136,6 +141,9 @@ app.get('/health', (_req, res) => {
 
 // Configurar Socket.io handlers
 setupSocketHandlers(io);
+
+// Configurar Video Socket Handler
+const videoSocketHandler = new VideoSocketHandler(server);
 
 // Middleware de manejo de errores (debe ir al final)
 app.use(errorHandler);

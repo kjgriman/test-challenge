@@ -1,13 +1,15 @@
-const express = require('express');
+import * as express from 'express';
 import { authenticate } from '../middleware/auth';
-import { asyncErrorHandler } from '../middleware/asyncErrorHandler';
 import {
   createVideoRoom,
+  getVideoRooms,
   getVideoRoom,
   joinVideoRoom,
+  startVideoRoom,
+  endVideoRoom,
   leaveVideoRoom,
-  getUserVideoRooms,
-  closeVideoRoom
+  deleteVideoRoom,
+  updateVideoRoomSettings
 } from '../controllers/videoRoomController';
 
 const router = express.Router();
@@ -15,22 +17,31 @@ const router = express.Router();
 // Todas las rutas requieren autenticación
 router.use(authenticate);
 
-// Crear nueva sala
-router.post('/', asyncErrorHandler(createVideoRoom));
+// Crear una nueva sala de video
+router.post('/', createVideoRoom);
 
-// Obtener salas del usuario
-router.get('/my-rooms', asyncErrorHandler(getUserVideoRooms));
+// Obtener todas las salas de video del usuario
+router.get('/', getVideoRooms);
 
-// Obtener sala específica
-router.get('/:roomId', asyncErrorHandler(getVideoRoom));
+// Obtener una sala de video específica
+router.get('/:roomId', getVideoRoom);
 
-// Unirse a una sala
-router.post('/:roomId/join', asyncErrorHandler(joinVideoRoom));
+// Unirse a una sala de video
+router.post('/:roomId/join', joinVideoRoom);
 
-// Salir de una sala
-router.post('/:roomId/leave', asyncErrorHandler(leaveVideoRoom));
+// Iniciar una sala de video
+router.post('/:roomId/start', startVideoRoom);
 
-// Cerrar sala (solo creador)
-router.delete('/:roomId', asyncErrorHandler(closeVideoRoom));
+// Finalizar una sala de video
+router.post('/:roomId/end', endVideoRoom);
+
+// Salir de una sala de video
+router.post('/:roomId/leave', leaveVideoRoom);
+
+// Eliminar una sala de video
+router.delete('/:roomId', deleteVideoRoom);
+
+// Actualizar configuración de la sala
+router.put('/:roomId/settings', updateVideoRoomSettings);
 
 export default router;

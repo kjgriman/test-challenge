@@ -16,7 +16,9 @@ import {
   Award,
   ChevronLeft,
   ChevronRight,
-  Bell
+  Bell,
+  Clock,
+  Plus
 } from 'lucide-react';
 
 // Importar hooks
@@ -81,14 +83,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
       icon: Calendar,
       children: [
         {
-          name: 'Programar Sesión',
-          href: '/sessions/schedule',
+          name: 'Todas las Sesiones',
+          href: '/sessions',
           icon: Calendar,
         },
         {
           name: 'Sesiones Activas',
           href: '/sessions/active',
           icon: Video,
+        },
+        {
+          name: 'Sesiones Programadas',
+          href: '/sessions/scheduled',
+          icon: Clock,
         },
         {
           name: 'Historial',
@@ -127,7 +134,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
         {
           name: 'Crear Juego',
           href: '/games/create',
-          icon: Gamepad2,
+          icon: Plus,
         },
         {
           name: 'Juegos Activos',
@@ -185,28 +192,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
         },
       ],
     },
-    {
-      name: 'Comunicación',
-      href: '/communication',
-      icon: MessageSquare,
-      children: [
-        {
-          name: 'Chat con Padres',
-          href: '/communication/chat',
-          icon: MessageSquare,
-        },
-        {
-          name: 'Notificaciones',
-          href: '/communication/notifications',
-          icon: ChevronRight, // Assuming ChevronRight is the correct icon for notifications
-        },
-        {
-          name: 'Correos',
-          href: '/communication/emails',
-          icon: FileText,
-        },
-      ],
-    },
+    // Sección de comunicación oculta - las notificaciones están disponibles en el header
+    // {
+    //   name: 'Comunicación',
+    //   href: '/communication',
+    //   icon: MessageSquare,
+    //   children: [
+    //     {
+    //       name: 'Chat con Padres',
+    //       href: '/communication/chat',
+    //       icon: MessageSquare,
+    //     },
+    //     {
+    //       name: 'Notificaciones',
+    //       href: '/notifications',
+    //       icon: Bell,
+    //     },
+    //     {
+    //       name: 'Correos',
+    //       href: '/communication/emails',
+    //       icon: FileText,
+    //     },
+    //   ],
+    // },
   ];
 
   // Menú para Child
@@ -299,23 +307,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
         },
       ],
     },
-    {
-      name: 'Comunicación',
-      href: '/communication',
-      icon: MessageSquare,
-      children: [
-        {
-          name: 'Chat con Terapeuta',
-          href: '/communication/chat',
-          icon: MessageSquare,
-        },
-        {
-          name: 'Mensajes',
-          href: '/communication/messages',
-          icon: MessageSquare,
-        },
-      ],
-    },
+    // Sección de comunicación oculta - las notificaciones están disponibles en el header
+    // {
+    //   name: 'Comunicación',
+    //   href: '/communication',
+    //   icon: MessageSquare,
+    //   children: [
+    //     {
+    //       name: 'Chat con Terapeuta',
+    //       href: '/communication/chat',
+    //       icon: MessageSquare,
+    //     },
+    //     {
+    //       name: 'Notificaciones',
+    //       href: '/notifications',
+    //       icon: Bell,
+    //     },
+    //   ],
+    // },
   ];
 
   // Seleccionar menú basado en el rol

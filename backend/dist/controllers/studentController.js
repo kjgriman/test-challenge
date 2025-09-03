@@ -48,15 +48,23 @@ var getStudents = function (req, res, next) { return __awaiter(void 0, void 0, v
         switch (_d.label) {
             case 0:
                 _d.trys.push([0, 3, , 4]);
+                console.log('🔍 getStudents iniciado');
                 if (!req.user) {
                     throw new errors_1.ValidationError('Usuario no autenticado');
                 }
                 slpId = req.user._id;
                 _a = req.query, _b = _a.page, page = _b === void 0 ? 1 : _b, _c = _a.limit, limit = _c === void 0 ? 10 : _c, skillLevel = _a.skillLevel, search = _a.search;
+                console.log('🔍 getStudents - SLP ID:', slpId);
+                console.log('🔍 getStudents - Query params:', { page: page, limit: limit, skillLevel: skillLevel, search: search });
                 query = {
                     role: 'child',
-                    'child.currentSLP': slpId
+                    $or: [
+                        { 'child.currentSLP': slpId },
+                        { 'child.currentSLP': { $exists: false } },
+                        { 'child.currentSLP': null }
+                    ]
                 };
+                console.log('🔍 Query:', JSON.stringify(query, null, 2));
                 // Filtrar por nivel de habilidad
                 if (skillLevel) {
                     query['child.skillLevel'] = skillLevel;
@@ -70,16 +78,24 @@ var getStudents = function (req, res, next) { return __awaiter(void 0, void 0, v
                     ];
                 }
                 skip = (Number(page) - 1) * Number(limit);
+                console.log('🔍 Ejecutando consulta...');
                 return [4 /*yield*/, User_1.User.find(query)
-                        .select('firstName lastName email child.skillLevel child.sessionsCompleted child.totalSessionTime child.primaryGoals')
+                        .select('firstName lastName email child.skillLevel child.sessionsCompleted child.totalSessionTime child.primaryGoals child.currentSLP')
                         .sort({ firstName: 1, lastName: 1 })
                         .skip(skip)
                         .limit(Number(limit))];
             case 1:
                 students = _d.sent();
+                console.log('✅ Estudiantes encontrados:', students.length);
+                students.forEach(function (student) {
+                    var _a;
+                    console.log("   - ".concat(student.firstName, " ").concat(student.lastName, " (currentSLP: ").concat((_a = student.child) === null || _a === void 0 ? void 0 : _a.currentSLP, ")"));
+                });
                 return [4 /*yield*/, User_1.User.countDocuments(query)];
             case 2:
                 total = _d.sent();
+                console.log('📊 Total de estudiantes:', total);
+                console.log('🔍 Enviando respuesta...');
                 (0, responseUtils_1.sendSuccessResponse)(res, {
                     students: students,
                     pagination: {
@@ -92,6 +108,7 @@ var getStudents = function (req, res, next) { return __awaiter(void 0, void 0, v
                 return [3 /*break*/, 4];
             case 3:
                 error_1 = _d.sent();
+                console.log('❌ Error en getStudents:', error_1);
                 next(error_1);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];

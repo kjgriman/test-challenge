@@ -2,7 +2,6 @@ import { Server, Socket } from 'socket.io';
 import { TherapySession } from '../models/TherapySession';
 import { User } from '../models/User';
 import * as jwt from 'jsonwebtoken';
-import { setupVideoRoomHandlers } from './videoRoomHandlers';
 import GameHandlers from './gameHandlers';
 
 interface AuthenticatedSocket extends Socket {
@@ -69,9 +68,6 @@ const verifySessionAccess = async (socket: AuthenticatedSocket, sessionId: strin
 
 // Configurar manejadores de WebSocket
 export const setupSocketHandlers = (io: Server) => {
-  // Configurar handlers de salas de video
-  setupVideoRoomHandlers(io);
-  
   // Configurar handlers de juegos
   const gameHandlers = new GameHandlers(io);
   gameHandlers.initialize();

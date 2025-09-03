@@ -1,249 +1,308 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { VideoRoom } from '../models/VideoRoom';
-import { User } from '../models/User';
 import { sendSuccessResponse, sendErrorResponse } from '../utils/responseUtils';
+import { asyncErrorHandler } from '../middleware/asyncErrorHandler';
 
-// Crear una nueva sala de videoconferencia
-export const createVideoRoom = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    if (!req.user) {
-      sendErrorResponse(res, 'Usuario no autenticado', 401);
-      return;
-    }
+// Crear una nueva sala de video
+export const createVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { name, description, maxParticipants, settings } = req.body;
+  const userId = (req as any).user.id;
 
-    const { sessionId, title } = req.body;
-    const userId = req.user._id;
+  // Generar roomId único
+  let roomId: string;
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 10;
 
-    // Generar roomId único
-    const roomId = VideoRoom.generateRoomId();
-
-    // Crear la sala
-    const videoRoom = new VideoRoom({
-      roomId,
-      sessionId: sessionId || `session_${Date.now()}`,
-      title: title || 'Sala de Terapia',
-      createdBy: userId,
-      participants: [{
-        userId,
-        name: `${req.user.firstName} ${req.user.lastName}`,
-        role: req.user.role,
-        joinedAt: new Date(),
-        isActive: true
-      }]
-    });
-
-    await videoRoom.save();
-
-    sendSuccessResponse(res, {
-      roomId: videoRoom.roomId,
-      sessionId: videoRoom.sessionId,
-      title: videoRoom.title,
-      participants: videoRoom.getActiveParticipants()
-    }, 'Sala de videoconferencia creada exitosamente');
-
-  } catch (error) {
-    next(error);
+  while (!isUnique && attempts < maxAttempts) {
+    roomId = (VideoRoom as any).generateRoomId();
+    isUnique = await (VideoRoom as any).isRoomIdUnique(roomId);
+    attempts++;
   }
-};
 
-// Obtener sala por roomId
-export const getVideoRoom = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    if (!req.user) {
-      sendErrorResponse(res, 'Usuario no autenticado', 401);
-      return;
-    }
-
-    const { roomId } = req.params;
-
-    const videoRoom = await VideoRoom.findOne({ roomId, isActive: true })
-      .populate('participants.userId', 'firstName lastName role');
-
-    if (!videoRoom) {
-      sendErrorResponse(res, 'Sala no encontrada', 404);
-      return;
-    }
-
-    sendSuccessResponse(res, {
-      roomId: videoRoom.roomId,
-      sessionId: videoRoom.sessionId,
-      title: videoRoom.title,
-      participants: videoRoom.getActiveParticipants(),
-      maxParticipants: videoRoom.maxParticipants
-    }, 'Sala obtenida exitosamente');
-
-  } catch (error) {
-    next(error);
+  if (!isUnique) {
+    return sendErrorResponse(res, 'No se pudo generar un identificador único para la sala', 500);
   }
-};
 
-// Unirse a una sala
-export const joinVideoRoom = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    if (!req.user) {
-      sendErrorResponse(res, 'Usuario no autenticado', 401);
-      return;
+  // Crear la sala
+  const videoRoom = new VideoRoom({
+    roomId,
+    name,
+    description,
+    createdBy: userId,
+    maxParticipants: maxParticipants || 10,
+    settings: {
+      allowScreenShare: settings?.allowScreenShare ?? true,
+      allowChat: settings?.allowChat ?? true,
+      allowRecording: settings?.allowRecording ?? false,
+      requireApproval: settings?.requireApproval ?? false
     }
+  });
 
-    const { roomId } = req.params;
-    const userId = req.user._id;
+  await videoRoom.save();
 
-    const videoRoom = await VideoRoom.findOne({ roomId, isActive: true });
+  // Agregar al creador como participante
+  await (videoRoom as any).addParticipant(userId, (req as any).user.firstName + ' ' + (req as any).user.lastName, (req as any).user.role);
 
-    if (!videoRoom) {
-      sendErrorResponse(res, 'Sala no encontrada', 404);
-      return;
+  return sendSuccessResponse(res, {
+    videoRoom: {
+      ...videoRoom.toJSON(),
+      shareLink: (videoRoom as any).getShareLink()
     }
+  }, 'Sala de video creada exitosamente');
+});
 
-    // Verificar si la sala está llena
-    const activeParticipants = videoRoom.getActiveParticipants();
-    if (activeParticipants.length >= videoRoom.maxParticipants) {
-      sendErrorResponse(res, 'Sala llena', 400);
-      return;
-    }
+// Obtener todas las salas de video del usuario
+export const getVideoRooms = asyncErrorHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { page = 1, limit = 10, status } = req.query;
 
-    // Agregar participante
-    await videoRoom.addParticipant(
-      userId,
-      `${req.user.firstName} ${req.user.lastName}`,
-      req.user.role
-    );
+  const query: any = {
+    $or: [
+      { createdBy: userId },
+      { 'participants.userId': userId }
+    ]
+  };
 
-    // Emitir evento WebSocket para notificar a otros participantes
-    // TODO: Implementar WebSocket
-
-    sendSuccessResponse(res, {
-      roomId: videoRoom.roomId,
-      participants: videoRoom.getActiveParticipants()
-    }, 'Te has unido a la sala exitosamente');
-
-  } catch (error) {
-    next(error);
+  if (status === 'active') {
+    query.isActive = true;
+  } else if (status === 'inactive') {
+    query.isActive = false;
   }
-};
 
-// Salir de una sala
-export const leaveVideoRoom = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    if (!req.user) {
-      sendErrorResponse(res, 'Usuario no autenticado', 401);
-      return;
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [videoRooms, total] = await Promise.all([
+    VideoRoom.find(query)
+      .populate('createdBy', 'firstName lastName')
+      .populate('participants.userId', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    VideoRoom.countDocuments(query)
+  ]);
+
+  return sendSuccessResponse(res, {
+    videoRooms: videoRooms.map(room => ({
+      ...room.toJSON(),
+      shareLink: (room as any).getShareLink()
+    })),
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit))
     }
+  }, 'Salas de video obtenidas exitosamente');
+});
 
-    const { roomId } = req.params;
-    const userId = req.user._id;
+// Obtener una sala de video específica
+export const getVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
 
-    const videoRoom = await VideoRoom.findOne({ roomId, isActive: true });
+  console.log('🔍 Buscando sala:', roomId, 'para usuario:', userId);
 
-    if (!videoRoom) {
-      sendErrorResponse(res, 'Sala no encontrada', 404);
-      return;
-    }
+  const videoRoom = await VideoRoom.findOne({ roomId })
+    .populate('createdBy', 'firstName lastName')
+    .populate('participants.userId', 'firstName lastName');
 
-    // Remover participante
-    await videoRoom.removeParticipant(userId);
-
-    // Emitir evento WebSocket para notificar a otros participantes
-    // TODO: Implementar WebSocket
-
-    sendSuccessResponse(res, {
-      roomId: videoRoom.roomId,
-      participants: videoRoom.getActiveParticipants()
-    }, 'Has salido de la sala exitosamente');
-
-  } catch (error) {
-    next(error);
+  if (!videoRoom) {
+    console.log('❌ Sala no encontrada');
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
   }
-};
 
-// Obtener salas activas del usuario
-export const getUserVideoRooms = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    if (!req.user) {
-      sendErrorResponse(res, 'Usuario no autenticado', 401);
-      return;
-    }
+  console.log('📋 Sala encontrada:', {
+    createdBy: videoRoom.createdBy,
+    participants: videoRoom.participants.map(p => ({ userId: p.userId, name: p.name })),
+    userId: userId
+  });
 
-    const userId = req.user._id;
+  // Verificar si el usuario tiene acceso a la sala
+  const isCreator = videoRoom.createdBy.toString() === userId;
+  const isParticipant = videoRoom.participants.some(p => p.userId.toString() === userId);
 
-    const videoRooms = await VideoRoom.find({
-      'participants.userId': userId,
-      isActive: true
-    }).populate('participants.userId', 'firstName lastName role');
+  console.log('🔐 Verificación de acceso:', {
+    isCreator,
+    isParticipant,
+    hasAccess: isCreator || isParticipant
+  });
 
-    const rooms = videoRooms.map(room => ({
-      roomId: room.roomId,
-      sessionId: room.sessionId,
-      title: room.title,
-      participants: room.getActiveParticipants(),
-      isCreator: room.createdBy.toString() === userId.toString()
-    }));
-
-    sendSuccessResponse(res, rooms, 'Salas obtenidas exitosamente');
-
-  } catch (error) {
-    next(error);
+  if (!isCreator && !isParticipant) {
+    console.log('❌ Usuario no tiene acceso');
+    return sendErrorResponse(res, 'No tienes acceso a esta sala', 403);
   }
-};
 
-// Cerrar una sala (solo el creador)
-export const closeVideoRoom = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    if (!req.user) {
-      sendErrorResponse(res, 'Usuario no autenticado', 401);
-      return;
+  console.log('✅ Usuario tiene acceso');
+
+  return sendSuccessResponse(res, {
+    videoRoom: {
+      ...videoRoom.toJSON(),
+      shareLink: (videoRoom as any).getShareLink()
     }
+  }, 'Sala de video obtenida exitosamente');
+});
 
-    const { roomId } = req.params;
-    const userId = req.user._id;
+// Unirse a una sala de video
+export const joinVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
 
-    const videoRoom = await VideoRoom.findOne({ roomId, isActive: true });
+  const videoRoom = await VideoRoom.findOne({ roomId });
 
-    if (!videoRoom) {
-      sendErrorResponse(res, 'Sala no encontrada', 404);
-      return;
-    }
-
-    // Verificar que el usuario sea el creador
-    if (videoRoom.createdBy.toString() !== userId.toString()) {
-      sendErrorResponse(res, 'Solo el creador puede cerrar la sala', 403);
-      return;
-    }
-
-    // Cerrar la sala
-    videoRoom.isActive = false;
-    await videoRoom.save();
-
-    // Emitir evento WebSocket para notificar a todos los participantes
-    // TODO: Implementar WebSocket
-
-    sendSuccessResponse(res, { roomId: videoRoom.roomId }, 'Sala cerrada exitosamente');
-
-  } catch (error) {
-    next(error);
+  if (!videoRoom) {
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
   }
-};
+
+  if (!videoRoom.isActive) {
+    return sendErrorResponse(res, 'La sala de video no está activa', 400);
+  }
+
+  // Verificar si requiere aprobación
+  if (videoRoom.settings.requireApproval && videoRoom.createdBy.toString() !== userId) {
+    // Aquí podrías implementar un sistema de solicitudes de aprobación
+    return sendErrorResponse(res, 'Esta sala requiere aprobación del creador', 403);
+  }
+
+  // Agregar participante
+  await (videoRoom as any).addParticipant(
+    userId, 
+    (req as any).user.firstName + ' ' + (req as any).user.lastName, 
+    (req as any).user.role
+  );
+
+  return sendSuccessResponse(res, {
+    videoRoom: {
+      ...videoRoom.toJSON(),
+      shareLink: (videoRoom as any).getShareLink()
+    }
+  }, 'Te has unido a la sala exitosamente');
+});
+
+// Iniciar una sala de video
+export const startVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+
+  if (!videoRoom) {
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
+  }
+
+  if (videoRoom.createdBy.toString() !== userId) {
+    return sendErrorResponse(res, 'Solo el creador puede iniciar la sala', 403);
+  }
+
+  if (videoRoom.isActive) {
+    return sendErrorResponse(res, 'La sala ya está activa', 400);
+  }
+
+  await (videoRoom as any).startRoom();
+
+  return sendSuccessResponse(res, {
+    videoRoom: {
+      ...videoRoom.toJSON(),
+      shareLink: (videoRoom as any).getShareLink()
+    }
+  }, 'Sala iniciada exitosamente');
+});
+
+// Finalizar una sala de video
+export const endVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+
+  if (!videoRoom) {
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
+  }
+
+  if (videoRoom.createdBy.toString() !== userId) {
+    return sendErrorResponse(res, 'Solo el creador puede finalizar la sala', 403);
+  }
+
+  if (!videoRoom.isActive) {
+    return sendErrorResponse(res, 'La sala no está activa', 400);
+  }
+
+  await (videoRoom as any).endRoom();
+
+  return sendSuccessResponse(res, {
+    videoRoom: {
+      ...videoRoom.toJSON(),
+      shareLink: (videoRoom as any).getShareLink()
+    }
+  }, 'Sala finalizada exitosamente');
+});
+
+// Salir de una sala de video
+export const leaveVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+
+  if (!videoRoom) {
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
+  }
+
+  await (videoRoom as any).removeParticipant(userId);
+
+  return sendSuccessResponse(res, {}, 'Has salido de la sala exitosamente');
+});
+
+// Eliminar una sala de video
+export const deleteVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+
+  if (!videoRoom) {
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
+  }
+
+  if (videoRoom.createdBy.toString() !== userId) {
+    return sendErrorResponse(res, 'Solo el creador puede eliminar la sala', 403);
+  }
+
+  await VideoRoom.deleteOne({ roomId });
+
+  return sendSuccessResponse(res, {}, 'Sala eliminada exitosamente');
+});
+
+// Actualizar configuración de la sala
+export const updateVideoRoomSettings = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+  const { name, description, maxParticipants, settings } = req.body;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+
+  if (!videoRoom) {
+    return sendErrorResponse(res, 'Sala de video no encontrada', 404);
+  }
+
+  if (videoRoom.createdBy.toString() !== userId) {
+    return sendErrorResponse(res, 'Solo el creador puede actualizar la configuración', 403);
+  }
+
+  // Actualizar campos permitidos
+  if (name) videoRoom.name = name;
+  if (description !== undefined) videoRoom.description = description;
+  if (maxParticipants) videoRoom.maxParticipants = maxParticipants;
+  if (settings) {
+    videoRoom.settings = { ...videoRoom.settings, ...settings };
+  }
+
+  await videoRoom.save();
+
+  return sendSuccessResponse(res, {
+    videoRoom: {
+      ...videoRoom.toJSON(),
+      shareLink: (videoRoom as any).getShareLink()
+    }
+  }, 'Configuración actualizada exitosamente');
+});

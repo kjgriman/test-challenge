@@ -14,11 +14,20 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCheck,
-  Activity
+  Activity,
+  AlertTriangle,
+  X,
+  Video,
+  Phone
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import CreateSessionModal from '../components/modals/CreateSessionModal';
 import EditSessionModal from '../components/modals/EditSessionModal';
+import VideoCall from '../components/video/VideoCall';
+
+// Backend URL from environment variables
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 
 // Tipos
 interface Session {
@@ -63,6 +72,16 @@ const Sessions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; session: Session | null }>({
+    isOpen: false,
+    session: null
+  });
+  
+  // Video call state
+  const [videoCallModal, setVideoCallModal] = useState<{ isOpen: boolean; sessionId: string | null }>({
+    isOpen: false,
+    sessionId: null
+  });
   
   // Filtros y búsqueda
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -70,13 +89,29 @@ const Sessions: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
+  // Auto-close error message after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Función para cerrar el mensaje de error manualmente
+  const closeError = () => {
+    setError(null);
+  };
+
   // Cargar sesiones
   const loadSessions = async () => {
     if (!token) return;
 
     try {
       setLoading(true);
-      const response = await fetch('/api/sessions', {
+      const response = await fetch(`${BACKEND_URL}/sessions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -85,9 +120,12 @@ const Sessions: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("datasessions", data.data.sessions);
+        
         setSessions(data.data.sessions || []);
       } else {
-        setError('Error al cargar las sesiones');
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al cargar las sesiones');
       }
     } catch (err) {
       setError('Error de conexión');
@@ -123,17 +161,6 @@ const Sessions: React.FC = () => {
     loadSessions();
   }, [token]);
 
-  // Debug: monitorear estado del modal
-  useEffect(() => {
-    console.log('🎭 Estado showCreateModal cambiado:', showCreateModal);
-  }, [showCreateModal]);
-
-  // Debug: verificar usuario y rol
-  useEffect(() => {
-    console.log('👤 Usuario actual:', user);
-    console.log('🎯 Rol del usuario:', user?.role);
-  }, [user]);
-
   // Obtener sesiones de la página actual
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -145,7 +172,7 @@ const Sessions: React.FC = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/start`, {
+      const response = await fetch(`${BACKEND_URL}/sessions/${sessionId}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -156,7 +183,8 @@ const Sessions: React.FC = () => {
       if (response.ok) {
         loadSessions(); // Recargar sesiones
       } else {
-        setError('Error al iniciar la sesión');
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al iniciar la sesión');
       }
     } catch (err) {
       setError('Error de conexión');
@@ -168,7 +196,7 @@ const Sessions: React.FC = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/end`, {
+      const response = await fetch(`${BACKEND_URL}/sessions/${sessionId}/end`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -184,7 +212,18 @@ const Sessions: React.FC = () => {
       if (response.ok) {
         loadSessions(); // Recargar sesiones
       } else {
-        setError('Error al finalizar la sesión');
+        const errorData = await response.json();
+        
+        // Manejar errores específicos
+        if (errorData.error?.details) {
+          setError(errorData.error.details);
+        } else if (errorData.error?.message) {
+          setError(errorData.error.message);
+        } else if (errorData.message) {
+          setError(errorData.message);
+        } else {
+          setError('Error al finalizar la sesión');
+        }
       }
     } catch (err) {
       setError('Error de conexión');
@@ -193,10 +232,10 @@ const Sessions: React.FC = () => {
 
   // Función para eliminar sesión
   const deleteSession = async (sessionId: string) => {
-    if (!token || !confirm('¿Estás seguro de que quieres eliminar esta sesión?')) return;
+    if (!token) return;
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}`, {
+      const response = await fetch(`${BACKEND_URL}/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -206,12 +245,32 @@ const Sessions: React.FC = () => {
 
       if (response.ok) {
         loadSessions(); // Recargar sesiones
+        setDeleteModal({ isOpen: false, session: null });
       } else {
-        setError('Error al eliminar la sesión');
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al eliminar la sesión');
       }
     } catch (err) {
       setError('Error de conexión');
     }
+  };
+
+  // Funciones para video call
+  const openVideoCall = (sessionId: string) => {
+    setVideoCallModal({ isOpen: true, sessionId });
+  };
+
+  const closeVideoCall = () => {
+    setVideoCallModal({ isOpen: false, sessionId: null });
+  };
+
+  const handleVideoStart = () => {
+    console.log('Video iniciado');
+  };
+
+  const handleVideoEnd = () => {
+    console.log('Video terminado');
+    closeVideoCall();
   };
 
   // Función para obtener color del estado
@@ -246,6 +305,9 @@ const Sessions: React.FC = () => {
     }
   };
 
+  // Verificar si el usuario puede crear sesiones
+  const canCreateSessions = user?.role === 'slp';
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -276,26 +338,8 @@ const Sessions: React.FC = () => {
               </p>
             </div>
             
-            {/* Botón de prueba siempre visible */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                console.log('🔘 Botón Nueva Sesión clickeado');
-                console.log('👤 Usuario:', user);
-                console.log('🎯 Estado showCreateModal antes:', showCreateModal);
-                setShowCreateModal(true);
-                console.log('🎯 Estado showCreateModal después:', true);
-                alert('¡Botón clickeado! Modal debería abrirse.');
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors duration-200 text-lg font-bold"
-            >
-              <Plus className="h-6 w-6" />
-              🚨 BOTÓN DE PRUEBA 🚨
-            </motion.button>
-            
-            {/* Botón original condicional */}
-            {user?.role === 'slp' && (
+            {/* Botón Nueva Sesión - Solo visible para SLP */}
+            {canCreateSessions && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -306,10 +350,10 @@ const Sessions: React.FC = () => {
                   setShowCreateModal(true);
                   console.log('🎯 Estado showCreateModal después:', true);
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors duration-200"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-lg hover:shadow-xl"
               >
                 <Plus className="h-5 w-5" />
-                Nueva Sesión (SLP)
+                Nueva Sesión
               </motion.button>
             )}
           </div>
@@ -360,9 +404,17 @@ const Sessions: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6"
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 relative"
           >
-            <p className="text-red-800">{error}</p>
+            <button
+              onClick={closeError}
+              className="absolute top-2 right-2 p-1 hover:bg-red-100 rounded-full transition-colors"
+              title="Cerrar mensaje"
+            >
+              <X className="h-4 w-4 text-red-600" />
+            </button>
+            <p className="text-red-800 pr-8">{error}</p>
           </motion.div>
         )}
 
@@ -379,11 +431,20 @@ const Sessions: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No hay sesiones
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-4">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'No se encontraron sesiones con los filtros aplicados'
                   : 'Aún no has creado ninguna sesión'}
               </p>
+              {canCreateSessions && !searchTerm && statusFilter === 'all' && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Crear primera sesión
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -446,6 +507,7 @@ const Sessions: React.FC = () => {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                             {session.sessionType === 'therapy' ? 'Terapia' :
                              session.sessionType === 'evaluation' ? 'Evaluación' : 'Juego'}
+                             
                           </span>
                         </div>
 
@@ -464,7 +526,7 @@ const Sessions: React.FC = () => {
                         </div>
 
                         {/* Acciones */}
-                        {user?.role === 'slp' && (
+                        {canCreateSessions && (
                           <div className="flex items-center gap-2">
                             {session.status === 'scheduled' && (
                               <>
@@ -483,7 +545,7 @@ const Sessions: React.FC = () => {
                                   <Edit className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => deleteSession(session._id)}
+                                  onClick={() => setDeleteModal({ isOpen: true, session })}
                                   className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors duration-150"
                                   title="Eliminar sesión"
                                 >
@@ -493,13 +555,22 @@ const Sessions: React.FC = () => {
                             )}
                             
                             {session.status === 'in_progress' && (
-                              <button
-                                onClick={() => endSession(session._id)}
-                                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors duration-150"
-                                title="Finalizar sesión"
-                              >
-                                <Square className="h-4 w-4" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => openVideoCall(session._id)}
+                                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors duration-150"
+                                  title="Iniciar video"
+                                >
+                                  <Video className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => endSession(session._id)}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors duration-150"
+                                  title="Finalizar sesión"
+                                >
+                                  <Square className="h-4 w-4" />
+                                </button>
+                              </>
                             )}
                           </div>
                         )}
@@ -564,6 +635,104 @@ const Sessions: React.FC = () => {
         }}
         session={editingSession}
       />
+
+      {/* Modal de confirmación de eliminación */}
+      <AnimatePresence>
+        {deleteModal.isOpen && deleteModal.session && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setDeleteModal({ isOpen: false, session: null })}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Confirmar eliminación
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setDeleteModal({ isOpen: false, session: null })}
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Contenido */}
+              <div className="mb-6">
+                <p className="text-gray-600 mb-3">
+                  ¿Estás seguro de que quieres eliminar esta sesión?
+                </p>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <UserCheck className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {deleteModal.session.childId.firstName} {deleteModal.session.childId.lastName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(deleteModal.session.scheduledDate).toLocaleDateString('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })} - {new Date(deleteModal.session.scheduledDate).toLocaleTimeString('es-ES', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-red-600 mt-3">
+                  Esta acción no se puede deshacer.
+                </p>
+              </div>
+
+              {/* Botones */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteModal({ isOpen: false, session: null })}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => deleteSession(deleteModal.session!._id)}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Video Call Modal */}
+      {videoCallModal.isOpen && videoCallModal.sessionId && (
+        <VideoCall
+          sessionId={videoCallModal.sessionId}
+          isOpen={videoCallModal.isOpen}
+          onClose={closeVideoCall}
+          onStartVideo={handleVideoStart}
+          onEndVideo={handleVideoEnd}
+        />
+      )}
     </div>
   );
 };
