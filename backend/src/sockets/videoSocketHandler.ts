@@ -26,14 +26,8 @@ export class VideoSocketHandler {
   private io: SocketIOServer;
   private sessionRooms: Map<string, Set<string>> = new Map(); // sessionId -> Set of socketIds
 
-  constructor(server: HTTPServer) {
-    this.io = new SocketIOServer(server, {
-      cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",
-        methods: ["GET", "POST"]
-      }
-    });
-
+  constructor(io: SocketIOServer) {
+    this.io = io;
     this.setupMiddleware();
     this.setupEventHandlers();
   }

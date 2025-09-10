@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { authenticateSocket } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 
 // Almacenar información de salas en memoria
 const videoRooms = new Map<string, {
@@ -10,17 +10,38 @@ const videoRooms = new Map<string, {
 }>();
 
 export const setupVideoRoomHandlers = (io: Server) => {
-  io.use(authenticateSocket);
+  // Middleware de autenticación
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+      
+      if (!token) {
+        return next(new Error('Token no proporcionado'));
+      }
+
+      // Verificar token JWT
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+      
+      // Agregar información del usuario al socket
+      (socket as any).userId = decoded.userId;
+      (socket as any).userEmail = decoded.email;
+      
+      next();
+    } catch (error) {
+      next(new Error('Token inválido'));
+    }
+  });
 
   io.on('connection', (socket: Socket) => {
-    console.log(`🔌 Usuario conectado: ${socket.data.user?.email}`);
+    console.log(`🔌 Usuario conectado: ${(socket as any).userEmail}`);
 
     // Crear una nueva sala de video
     socket.on('create-video-room', async (data: { roomName: string }) => {
       try {
         const { roomName } = data;
-        const userId = socket.data.user?.userId;
-        const userEmail = socket.data.user?.email;
+        const userId = (socket as any).userId;
+        const userEmail = (socket as any).userEmail;
 
         if (!userId) {
           socket.emit('error', { message: 'Usuario no autenticado' });
@@ -67,8 +88,8 @@ export const setupVideoRoomHandlers = (io: Server) => {
     socket.on('join-video-room', async (data: { roomId: string }) => {
       try {
         const { roomId } = data;
-        const userId = socket.data.user?.userId;
-        const userEmail = socket.data.user?.email;
+        const userId = (socket as any).userId;
+        const userEmail = (socket as any).userEmail;
 
         if (!userId) {
           socket.emit('error', { message: 'Usuario no autenticado' });
@@ -114,8 +135,8 @@ export const setupVideoRoomHandlers = (io: Server) => {
     socket.on('leave-video-room', async (data: { roomId: string }) => {
       try {
         const { roomId } = data;
-        const userId = socket.data.user?.userId;
-        const userEmail = socket.data.user?.email;
+        const userId = (socket as any).userId;
+        const userEmail = (socket as any).userEmail;
 
         if (!userId) return;
 
@@ -168,7 +189,7 @@ export const setupVideoRoomHandlers = (io: Server) => {
     socket.on('webrtc-offer', (data: { roomId: string; offer: RTCSessionDescriptionInit }) => {
       try {
         const { roomId, offer } = data;
-        const userId = socket.data.user?.userId;
+        const userId = (socket as any).userId;
 
         console.log(`📡 Oferta WebRTC de ${userId} en sala ${roomId}`);
         
@@ -187,7 +208,7 @@ export const setupVideoRoomHandlers = (io: Server) => {
     socket.on('webrtc-answer', (data: { roomId: string; answer: RTCSessionDescriptionInit }) => {
       try {
         const { roomId, answer } = data;
-        const userId = socket.data.user?.userId;
+        const userId = (socket as any).userId;
 
         console.log(`📡 Respuesta WebRTC de ${userId} en sala ${roomId}`);
         
@@ -206,7 +227,7 @@ export const setupVideoRoomHandlers = (io: Server) => {
     socket.on('webrtc-ice-candidate', (data: { roomId: string; candidate: RTCIceCandidateInit }) => {
       try {
         const { roomId, candidate } = data;
-        const userId = socket.data.user?.userId;
+        const userId = (socket as any).userId;
 
         console.log(`🧊 ICE Candidate de ${userId} en sala ${roomId}`);
         
@@ -223,12 +244,12 @@ export const setupVideoRoomHandlers = (io: Server) => {
 
     // Manejar desconexión
     socket.on('disconnect', () => {
-      console.log(`🔌 Usuario desconectado: ${socket.data.user?.email}`);
+      console.log(`🔌 Usuario desconectado: ${(socket as any).userEmail}`);
       
       // Remover usuario de todas las salas
       videoRooms.forEach((room, roomId) => {
-        if (room.participants.has(socket.data.user?.userId)) {
-          room.participants.delete(socket.data.user?.userId);
+        if (room.participants.has((socket as any).userId)) {
+          room.participants.delete((socket as any).userId);
           
           if (room.participants.size === 0) {
             videoRooms.delete(roomId);
