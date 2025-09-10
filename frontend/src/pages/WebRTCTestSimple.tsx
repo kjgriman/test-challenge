@@ -25,11 +25,41 @@ const WebRTCTest: React.FC = () => {
   const checkWebRTCSupport = useCallback(() => {
     addLog('🔍 Verificando soporte WebRTC...');
     
+    // Diagnóstico profundo de RTCPeerConnection
+    addLog('📡 === DIAGNÓSTICO RTCPeerConnection ===');
+    addLog(`   window.RTCPeerConnection: ${typeof window.RTCPeerConnection}`);
+    addLog(`   window.webkitRTCPeerConnection: ${typeof (window as any).webkitRTCPeerConnection}`);
+    addLog(`   window.mozRTCPeerConnection: ${typeof (window as any).mozRTCPeerConnection}`);
+    addLog(`   globalThis.RTCPeerConnection: ${typeof (globalThis as any).RTCPeerConnection}`);
+    addLog(`   self.RTCPeerConnection: ${typeof (self as any).RTCPeerConnection}`);
+    
+    // Verificar si está definido globalmente
+    addLog(`   typeof RTCPeerConnection: ${typeof RTCPeerConnection}`);
+    
+    // Verificar en diferentes contextos
+    try {
+      addLog('🧪 Probando acceso directo...');
+      const testPC = RTCPeerConnection;
+      addLog(`   RTCPeerConnection directo: ${typeof testPC}`);
+    } catch (e) {
+      addLog(`   ❌ Error acceso directo: ${(e as Error).message}`);
+    }
+    
+    try {
+      addLog('🧪 Probando window.RTCPeerConnection...');
+      const testPC = window.RTCPeerConnection;
+      addLog(`   window.RTCPeerConnection: ${typeof testPC}`);
+    } catch (e) {
+      addLog(`   ❌ Error window.RTCPeerConnection: ${(e as Error).message}`);
+    }
+    
     // Verificar RTCPeerConnection
     const hasRTCPeerConnection = !!(
       window.RTCPeerConnection || 
       (window as any).webkitRTCPeerConnection || 
-      (window as any).mozRTCPeerConnection
+      (window as any).mozRTCPeerConnection ||
+      (globalThis as any).RTCPeerConnection ||
+      (self as any).RTCPeerConnection
     );
     
     // Verificar getUserMedia
@@ -44,6 +74,14 @@ const WebRTCTest: React.FC = () => {
     addLog(`📹 getUserMedia: ${hasGetUserMedia ? '✅' : '❌'}`);
     addLog(`🌐 Protocolo: ${window.location.protocol}`);
     addLog(`🏠 Hostname: ${window.location.hostname}`);
+    
+    // Información adicional del navegador
+    addLog('🌐 === INFORMACIÓN DEL NAVEGADOR ===');
+    addLog(`   User Agent: ${navigator.userAgent}`);
+    addLog(`   Platform: ${navigator.platform}`);
+    addLog(`   Language: ${navigator.language}`);
+    addLog(`   Cookie Enabled: ${navigator.cookieEnabled}`);
+    addLog(`   OnLine: ${navigator.onLine}`);
     
     return hasRTCPeerConnection && hasGetUserMedia;
   }, [addLog]);
@@ -138,32 +176,57 @@ const WebRTCTest: React.FC = () => {
     try {
       addLog('🧪 Probando RTCPeerConnection...');
       
-      // Encontrar la clase RTCPeerConnection
-      const RTCPeerConnectionClass = 
-        window.RTCPeerConnection || 
-        (window as any).webkitRTCPeerConnection || 
-        (window as any).mozRTCPeerConnection;
-      
-      if (!RTCPeerConnectionClass) {
-        throw new Error('RTCPeerConnection no está disponible');
+      // Método 1: Acceso directo
+      try {
+        addLog('🔍 Método 1: Acceso directo a RTCPeerConnection');
+        const pc1 = new RTCPeerConnection();
+        addLog('✅ RTCPeerConnection creado con acceso directo');
+        pc1.close();
+      } catch (e) {
+        addLog(`❌ Método 1 falló: ${(e as Error).message}`);
       }
       
-      addLog(`📡 Usando: ${RTCPeerConnectionClass.name || 'RTCPeerConnection'}`);
+      // Método 2: window.RTCPeerConnection
+      try {
+        addLog('🔍 Método 2: window.RTCPeerConnection');
+        const pc2 = new window.RTCPeerConnection();
+        addLog('✅ RTCPeerConnection creado con window.RTCPeerConnection');
+        pc2.close();
+      } catch (e) {
+        addLog(`❌ Método 2 falló: ${(e as Error).message}`);
+      }
       
-      // Crear conexión
-      const config = {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-      };
+      // Método 3: webkitRTCPeerConnection
+      try {
+        addLog('🔍 Método 3: webkitRTCPeerConnection');
+        const pc3 = new (window as any).webkitRTCPeerConnection();
+        addLog('✅ RTCPeerConnection creado con webkitRTCPeerConnection');
+        pc3.close();
+      } catch (e) {
+        addLog(`❌ Método 3 falló: ${(e as Error).message}`);
+      }
       
-      const pc = new RTCPeerConnectionClass(config);
-      addLog('✅ RTCPeerConnection creado exitosamente');
+      // Método 4: mozRTCPeerConnection
+      try {
+        addLog('🔍 Método 4: mozRTCPeerConnection');
+        const pc4 = new (window as any).mozRTCPeerConnection();
+        addLog('✅ RTCPeerConnection creado con mozRTCPeerConnection');
+        pc4.close();
+      } catch (e) {
+        addLog(`❌ Método 4 falló: ${(e as Error).message}`);
+      }
       
-      // Cerrar conexión
-      pc.close();
-      addLog('✅ RTCPeerConnection cerrado correctamente');
+      // Método 5: globalThis
+      try {
+        addLog('🔍 Método 5: globalThis.RTCPeerConnection');
+        const pc5 = new (globalThis as any).RTCPeerConnection();
+        addLog('✅ RTCPeerConnection creado con globalThis.RTCPeerConnection');
+        pc5.close();
+      } catch (e) {
+        addLog(`❌ Método 5 falló: ${(e as Error).message}`);
+      }
+      
+      addLog('🏁 Pruebas de RTCPeerConnection completadas');
       
     } catch (error) {
       const errorMessage = `Error probando RTCPeerConnection: ${(error as Error).message}`;
