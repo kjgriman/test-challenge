@@ -27,6 +27,7 @@ const AddStudentPage = React.lazy(() => import('./pages/AddStudent'));
 const StudentEvaluationsPage = React.lazy(() => import('./pages/StudentEvaluations'));
 const WebRTCDiagnosticsPage = React.lazy(() => import('./pages/WebRTCDiagnostics'));
 const WebRTCTestPage = React.lazy(() => import('./pages/WebRTCTest'));
+const WebRTCTestSimplePage = React.lazy(() => import('./pages/WebRTCTestSimple'));
 const NotificationsPage = React.lazy(() => import('./pages/Notifications'));
 const GamesPage = React.lazy(() => import('./pages/Games'));
 const CreateGamePage = React.lazy(() => import('./pages/CreateGame'));
@@ -344,6 +345,18 @@ const App: React.FC = () => {
                 <Layout>
                   <Suspense fallback={<PageLoader />}>
                     <WebRTCTestPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/webrtc-simple"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <WebRTCTestSimplePage />
                   </Suspense>
                 </Layout>
               </ProtectedRoute>

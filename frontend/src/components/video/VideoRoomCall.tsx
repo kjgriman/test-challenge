@@ -162,11 +162,44 @@ const VideoRoomCall: React.FC<VideoRoomCallProps> = ({
     });
   }, [roomId]);
 
+  // Función para inicializar WebRTC de forma robusta
+  const initializeWebRTC = useCallback(() => {
+    console.log('🔧 Inicializando WebRTC...');
+    
+    // Verificar disponibilidad de APIs WebRTC
+    const hasRTCPeerConnection = !!(
+      window.RTCPeerConnection || 
+      (window as any).webkitRTCPeerConnection || 
+      (window as any).mozRTCPeerConnection
+    );
+    
+    const hasGetUserMedia = !!(
+      navigator.mediaDevices?.getUserMedia ||
+      navigator.getUserMedia ||
+      (navigator as any).webkitGetUserMedia ||
+      (navigator as any).mozGetUserMedia
+    );
+    
+    console.log('📡 RTCPeerConnection disponible:', hasRTCPeerConnection);
+    console.log('📹 getUserMedia disponible:', hasGetUserMedia);
+    
+    if (!hasRTCPeerConnection) {
+      throw new Error('RTCPeerConnection no está disponible en este navegador');
+    }
+    
+    if (!hasGetUserMedia) {
+      throw new Error('getUserMedia no está disponible en este navegador');
+    }
+    
+    console.log('✅ WebRTC inicializado correctamente');
+    return true;
+  }, []);
+
   // Inicializar video local con mejor manejo de errores
   const initializeLocalVideo = useCallback(async () => {
     try {
-      // Verificación WebRTC opcional (comentada temporalmente)
-      // checkWebRTCSupport();
+      // Inicializar WebRTC primero
+      initializeWebRTC();
 
       console.log('🎥 Solicitando acceso a cámara y micrófono...');
       
@@ -634,36 +667,39 @@ const VideoRoomCall: React.FC<VideoRoomCallProps> = ({
         // Continuar sin WebSocket para pruebas
       }
 
-      // Crear conexión WebRTC con fallback para navegadores antiguos
+      // Crear conexión WebRTC - enfoque simplificado y robusto
       let peerConnection: RTCPeerConnection;
       
+      console.log('🔍 Verificando disponibilidad de RTCPeerConnection...');
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('🌐 URL:', window.location.href);
+      console.log('🔒 Protocolo:', window.location.protocol);
+      
+      // Verificar todas las posibles implementaciones
+      const RTCPeerConnectionClass = 
+        window.RTCPeerConnection || 
+        (window as any).webkitRTCPeerConnection || 
+        (window as any).mozRTCPeerConnection ||
+        (globalThis as any).RTCPeerConnection ||
+        (self as any).RTCPeerConnection;
+      
+      console.log('📡 RTCPeerConnectionClass encontrada:', !!RTCPeerConnectionClass);
+      console.log('📡 window.RTCPeerConnection:', !!window.RTCPeerConnection);
+      console.log('📡 webkitRTCPeerConnection:', !!(window as any).webkitRTCPeerConnection);
+      console.log('📡 mozRTCPeerConnection:', !!(window as any).mozRTCPeerConnection);
+      
+      if (!RTCPeerConnectionClass) {
+        console.error('❌ RTCPeerConnection no está disponible');
+        console.error('🔍 Verificaciones adicionales:');
+        console.error('   - typeof RTCPeerConnection:', typeof RTCPeerConnection);
+        console.error('   - typeof window.RTCPeerConnection:', typeof window.RTCPeerConnection);
+        console.error('   - window.RTCPeerConnection:', window.RTCPeerConnection);
+        throw new Error('RTCPeerConnection no está disponible en este navegador. Verifica que estés usando un navegador moderno con soporte WebRTC.');
+      }
+      
       try {
-        // Método 1: Directo
-        if (window.RTCPeerConnection) {
-          peerConnection = new window.RTCPeerConnection(rtcConfig);
-          console.log('✅ Usando RTCPeerConnection estándar (método 1)');
-        }
-        // Método 2: Con globalThis
-        else if (globalThis.RTCPeerConnection) {
-          peerConnection = new globalThis.RTCPeerConnection(rtcConfig);
-          console.log('✅ Usando RTCPeerConnection estándar (método 2)');
-        }
-        // Método 3: Con self
-        else if ((self as any).RTCPeerConnection) {
-          peerConnection = new (self as any).RTCPeerConnection(rtcConfig);
-          console.log('✅ Usando RTCPeerConnection estándar (método 3)');
-        }
-        // Método 4: Con prefijos
-        else if ((window as any).webkitRTCPeerConnection) {
-          peerConnection = new (window as any).webkitRTCPeerConnection(rtcConfig);
-          console.log('✅ Usando webkitRTCPeerConnection');
-        } else if ((window as any).mozRTCPeerConnection) {
-          peerConnection = new (window as any).mozRTCPeerConnection(rtcConfig);
-          console.log('✅ Usando mozRTCPeerConnection');
-        } else {
-          console.error('❌ Ninguna implementación de RTCPeerConnection disponible');
-          throw new Error('RTCPeerConnection no está disponible en este navegador');
-        }
+        peerConnection = new RTCPeerConnectionClass(rtcConfig);
+        console.log('✅ RTCPeerConnection creado exitosamente');
       } catch (error) {
         console.error('❌ Error creando RTCPeerConnection:', error);
         throw new Error('Error creando conexión WebRTC: ' + (error as Error).message);
