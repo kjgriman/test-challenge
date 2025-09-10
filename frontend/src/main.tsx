@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Importar estilos
 import './index.css';
 
+// Importar configuración WebRTC
+import './utils/webrtc-config';
+
 // Importar componentes principales
 import App from './App';
 
