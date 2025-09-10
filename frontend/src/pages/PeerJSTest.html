@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba PeerJS</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+        video {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Prueba PeerJS (Alternativa a WebRTC)</h1>
+        <p>PeerJS es una librería que proporciona WebRTC de manera más compatible.</p>
+        
+        <div>
+            <button onclick="checkPeerJS()">🔍 Verificar PeerJS</button>
+            <button onclick="testPeerJS()">🧪 Probar PeerJS</button>
+            <button onclick="startVideoPeerJS()">🎥 Iniciar Video con PeerJS</button>
+            <button onclick="clearLogs()">🗑️ Limpiar Logs</button>
+        </div>
+        
+        <video id="localVideo" autoplay muted style="display: none;"></video>
+        
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+        const logs = document.getElementById('logs');
+        const localVideo = document.getElementById('localVideo');
+        let peer = null;
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            logs.innerHTML = '';
+        }
+        
+        function checkPeerJS() {
+            addLog('🔍 Verificando PeerJS...', 'info');
+            
+            if (typeof Peer !== 'undefined') {
+                addLog('✅ PeerJS está disponible', 'success');
+                addLog(`📦 Versión: ${Peer.VERSION || 'Desconocida'}`, 'info');
+            } else {
+                addLog('❌ PeerJS no está disponible', 'error');
+                addLog('💡 Asegúrate de que el script de PeerJS esté cargado', 'warning');
+            }
+            
+            // Verificar getUserMedia
+            const hasGetUserMedia = !!(
+                navigator.mediaDevices?.getUserMedia ||
+                navigator.getUserMedia ||
+                navigator.webkitGetUserMedia ||
+                navigator.mozGetUserMedia
+            );
+            
+            addLog(`📹 getUserMedia: ${hasGetUserMedia ? '✅' : '❌'}`, hasGetUserMedia ? 'success' : 'error');
+            addLog(`🌐 Protocolo: ${window.location.protocol}`, 'info');
+            addLog(`🏠 Hostname: ${window.location.hostname}`, 'info');
+        }
+        
+        function testPeerJS() {
+            addLog('🧪 Probando PeerJS...', 'info');
+            
+            if (typeof Peer === 'undefined') {
+                addLog('❌ PeerJS no está disponible', 'error');
+                return;
+            }
+            
+            try {
+                // Crear peer con servidor público
+                const testPeer = new Peer();
+                
+                testPeer.on('open', (id) => {
+                    addLog(`✅ PeerJS funcionando - ID: ${id}`, 'success');
+                    testPeer.destroy();
+                });
+                
+                testPeer.on('error', (error) => {
+                    addLog(`❌ Error PeerJS: ${error.message}`, 'error');
+                });
+                
+                // Timeout para cerrar la conexión
+                setTimeout(() => {
+                    if (testPeer && !testPeer.destroyed) {
+                        testPeer.destroy();
+                        addLog('⏰ Conexión de prueba cerrada', 'info');
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                addLog(`❌ Error probando PeerJS: ${error.message}`, 'error');
+            }
+        }
+        
+        async function startVideoPeerJS() {
+            try {
+                addLog('🎥 Iniciando video con PeerJS...', 'info');
+                
+                if (typeof Peer === 'undefined') {
+                    throw new Error('PeerJS no está disponible');
+                }
+                
+                // Crear peer
+                peer = new Peer();
+                
+                peer.on('open', async (id) => {
+                    addLog(`✅ Conectado a PeerJS con ID: ${id}`, 'success');
+                    
+                    try {
+                        // Obtener stream de video
+                        const constraints = {
+                            video: {
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: true
+                        };
+                        
+                        let stream;
+                        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                            stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        } else if (navigator.getUserMedia) {
+                            stream = await new Promise((resolve, reject) => {
+                                navigator.getUserMedia(constraints, resolve, reject);
+                            });
+                        } else {
+                            throw new Error('getUserMedia no está disponible');
+                        }
+                        
+                        addLog('✅ Stream de video obtenido', 'success');
+                        
+                        // Mostrar video
+                        localVideo.srcObject = stream;
+                        localVideo.style.display = 'block';
+                        
+                        // Mostrar información del stream
+                        const videoTracks = stream.getVideoTracks();
+                        const audioTracks = stream.getAudioTracks();
+                        
+                        if (videoTracks.length > 0) {
+                            const videoTrack = videoTracks[0];
+                            addLog(`📹 Video: ${videoTrack.label}`, 'success');
+                            addLog(`📹 Video ${videoTrack.enabled ? 'activado' : 'desactivado'}`, 'success');
+                        }
+                        
+                        if (audioTracks.length > 0) {
+                            const audioTrack = audioTracks[0];
+                            addLog(`🎤 Audio: ${audioTrack.label}`, 'success');
+                            addLog(`🎤 Audio ${audioTrack.enabled ? 'activado' : 'desactivado'}`, 'success');
+                        }
+                        
+                        addLog('🎉 ¡Video funcionando con PeerJS!', 'success');
+                        
+                    } catch (error) {
+                        addLog(`❌ Error obteniendo stream: ${error.message}`, 'error');
+                    }
+                });
+                
+                peer.on('error', (error) => {
+                    addLog(`❌ Error PeerJS: ${error.message}`, 'error');
+                });
+                
+            } catch (error) {
+                addLog(`❌ Error iniciando PeerJS: ${error.message}`, 'error');
+            }
+        }
+        
+        // Verificar PeerJS al cargar la página
+        window.addEventListener('load', () => {
+            addLog('🚀 Página cargada, verificando PeerJS...', 'info');
+            checkPeerJS();
+        });
+    </script>
+</body>
+</html>

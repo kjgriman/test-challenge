@@ -28,6 +28,7 @@ const StudentEvaluationsPage = React.lazy(() => import('./pages/StudentEvaluatio
 const WebRTCDiagnosticsPage = React.lazy(() => import('./pages/WebRTCDiagnostics'));
 const WebRTCTestPage = React.lazy(() => import('./pages/WebRTCTest'));
 const WebRTCTestSimplePage = React.lazy(() => import('./pages/WebRTCTestSimple'));
+const PeerJSTestPage = React.lazy(() => import('./pages/PeerJSTest'));
 const NotificationsPage = React.lazy(() => import('./pages/Notifications'));
 const GamesPage = React.lazy(() => import('./pages/Games'));
 const CreateGamePage = React.lazy(() => import('./pages/CreateGame'));
@@ -357,6 +358,18 @@ const App: React.FC = () => {
                 <Layout>
                   <Suspense fallback={<PageLoader />}>
                     <WebRTCTestSimplePage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/peerjs-test"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <PeerJSTestPage />
                   </Suspense>
                 </Layout>
               </ProtectedRoute>

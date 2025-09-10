@@ -206,6 +206,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
           href: '/webrtc-simple',
           icon: Camera,
         },
+        {
+          name: 'Prueba PeerJS',
+          href: '/peerjs-test',
+          icon: Camera,
+        },
       ],
     },
     // Sección de comunicación oculta - las notificaciones están disponibles en el header
