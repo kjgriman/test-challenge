@@ -49,17 +49,20 @@ const CreateVideoRoomModal: React.FC<CreateVideoRoomModalProps> = ({
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/video-rooms`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          settings
-        })
-      });
+      const response = await fetch(
+        `https://test-challenge-production.up.railway.app/api/video-rooms`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formData,
+            settings,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Error al crear la sala');

@@ -94,7 +94,7 @@ const FullVideoConference: React.FC = () => {
     }
 
     // Usar HTTP para desarrollo local
-    const serverUrl = 'http://localhost:3001';
+    const serverUrl = "https://test-challenge-production.up.railway.app/api";
 
     const newSocket = io(serverUrl, {
       auth: {

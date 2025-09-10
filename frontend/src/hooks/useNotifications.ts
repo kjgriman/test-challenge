@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 
-const BACKEND_URL = 'http://127.0.0.1:3001';
+const BACKEND_URL = "https://test-challenge-production.up.railway.app/api";
 
 export interface Notification {
   _id: string;

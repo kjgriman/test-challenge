@@ -283,12 +283,15 @@ const VideoRoomCall: React.FC<VideoRoomCallProps> = ({
 
     // Importar Socket.IO dinámicamente
     import('socket.io-client').then(({ io }) => {
-      const socket = io('http://localhost:3001', {
-        auth: { token },
-        transports: ['websocket', 'polling'],
-        timeout: 20000,
-        forceNew: true
-      });
+      const socket = io(
+        "https://test-challenge-production.up.railway.app/api",
+        {
+          auth: { token },
+          transports: ["websocket", "polling"],
+          timeout: 20000,
+          forceNew: true,
+        }
+      );
 
       socket.on('connect', () => {
         console.log('✅ Conectado al servidor de video');
