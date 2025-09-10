@@ -93,10 +93,8 @@ const FullVideoConference: React.FC = () => {
       return;
     }
 
-    // Determinar URL del servidor
-    const serverUrl = window.location.protocol === 'https:' 
-      ? 'https://localhost:3001' 
-      : 'http://localhost:3001';
+    // Usar HTTP para desarrollo local
+    const serverUrl = 'http://localhost:3001';
 
     const newSocket = io(serverUrl, {
       auth: {

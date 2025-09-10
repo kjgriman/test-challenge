@@ -29,11 +29,11 @@ dotenv.config();
 
 // Configuración del servidor
 const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const VERCEL_URL = process.env.VERCEL_URL;
 const corsOrigin = VERCEL_URL ? `https://${VERCEL_URL}` : FRONTEND_URL;
 const socketCorsOrigin = VERCEL_URL ? `https://${VERCEL_URL}` : FRONTEND_URL;
-const USE_HTTPS = process.env.USE_HTTPS === 'true';
+const USE_HTTPS = false; // Deshabilitar HTTPS para desarrollo local
 
 console.log('📋 Environment Variables:', {
   NODE_ENV: process.env.NODE_ENV,

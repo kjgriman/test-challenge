@@ -23,18 +23,15 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    https: {
-      key: './ssl/private-key.pem',
-      cert: './ssl/certificate.pem'
-    },
+    // Usar HTTP para desarrollo local
     proxy: {
       "/api": {
-        target: process.env.VITE_API_URL || "https://localhost:3001",
+        target: process.env.VITE_API_URL || "http://localhost:3001",
         changeOrigin: true,
         secure: false,
       },
       "/socket.io": {
-        target: process.env.VITE_API_URL || "https://localhost:3001",
+        target: process.env.VITE_API_URL || "http://localhost:3001",
         changeOrigin: true,
         ws: true,
       },
