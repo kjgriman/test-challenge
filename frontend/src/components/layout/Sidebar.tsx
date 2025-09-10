@@ -18,7 +18,8 @@ import {
   ChevronRight,
   Bell,
   Clock,
-  Plus
+  Plus,
+  Camera
 } from 'lucide-react';
 
 // Importar hooks
