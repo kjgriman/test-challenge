@@ -80,10 +80,6 @@ export default defineConfig({
   },
   define: {
     global: "globalThis",
-    // Asegurar que las APIs WebRTC estén disponibles
-    "RTCPeerConnection": "RTCPeerConnection",
-    "RTCSessionDescription": "RTCSessionDescription",
-    "RTCIceCandidate": "RTCIceCandidate",
   },
   test: {
     globals: true,
