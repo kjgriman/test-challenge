@@ -150,6 +150,54 @@ const HTTPSDiagnostics: React.FC = () => {
     }
   }, [addLog]);
 
+  const testVideoOnly = useCallback(async () => {
+    try {
+      addLog('🎥 === PROBANDO SOLO VIDEO (Sin WebRTC) ===');
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia no está disponible');
+      }
+      
+      addLog('✅ getUserMedia disponible');
+      
+      const constraints = {
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      };
+      
+      addLog('🔍 Obteniendo stream de video...');
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      addLog('✅ Stream de video obtenido');
+      
+      // Mostrar video
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        addLog('✅ Video mostrado correctamente');
+      }
+      
+      // Información del stream
+      const videoTracks = stream.getVideoTracks();
+      if (videoTracks.length > 0) {
+        const track = videoTracks[0];
+        addLog(`📹 Track: ${track.label}`);
+        addLog(`📹 Estado: ${track.readyState}`);
+        addLog(`📹 Habilitado: ${track.enabled}`);
+      }
+      
+      addLog('🎉 ¡Video funciona sin WebRTC!');
+      addLog('💡 Esto significa que podemos mostrar video local');
+      addLog('💡 Para videoconferencias necesitamos RTCPeerConnection');
+      
+    } catch (error) {
+      addLog(`❌ Error obteniendo video: ${(error as Error).message}`);
+      setError(`Error obteniendo video: ${(error as Error).message}`);
+    }
+  }, [addLog]);
+
   const clearLogs = useCallback(() => {
     setLogs([]);
   }, []);
@@ -174,6 +222,9 @@ const HTTPSDiagnostics: React.FC = () => {
               </Button>
               <Button onClick={testRTCPeerConnection} variant="outline">
                 📡 Probar RTCPeerConnection
+              </Button>
+              <Button onClick={testVideoOnly} variant="default">
+                🎬 Solo Video (Sin WebRTC)
               </Button>
               <Button onClick={clearLogs} variant="outline">
                 🗑️ Limpiar Logs
