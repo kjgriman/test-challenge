@@ -122,7 +122,7 @@ const VideoRooms: React.FC = () => {
   const loadVideoSessions = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/sessions`, {
+      const response = await fetch(`http://localhost:3001/api/sessions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -151,7 +151,7 @@ const VideoRooms: React.FC = () => {
   // Cargar salas de video independientes
   const loadVideoRooms = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms`, {
+      const response = await fetch(`http://localhost:3001/api/video-rooms`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -180,7 +180,7 @@ const VideoRooms: React.FC = () => {
   // Unirse a una sala de video independiente
   const joinVideoRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/join`, {
+      const response = await fetch(`http://localhost:3001/api/video-rooms/${roomId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -230,7 +230,7 @@ const VideoRooms: React.FC = () => {
   // Iniciar sala de video
   const startVideoRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/start`, {
+      const response = await fetch(`http://localhost:3001/api/video-rooms/${roomId}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -252,7 +252,7 @@ const VideoRooms: React.FC = () => {
   // Finalizar sala de video
   const endVideoRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/end`, {
+      const response = await fetch(`http://localhost:3001/api/video-rooms/${roomId}/end`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -274,7 +274,7 @@ const VideoRooms: React.FC = () => {
   // Iniciar video para una sesión
   const startVideoSession = async (sessionId: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video/sessions/${sessionId}/start-video`, {
+      const response = await fetch(`http://localhost:3001/api/video/sessions/${sessionId}/start-video`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -296,7 +296,7 @@ const VideoRooms: React.FC = () => {
   // Finalizar video para una sesión
   const endVideoSession = async (sessionId: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video/sessions/${sessionId}/end-video`, {
+      const response = await fetch(`http://localhost:3001/api/video/sessions/${sessionId}/end-video`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -598,7 +598,7 @@ const VideoRooms: React.FC = () => {
                           size="sm"
                         >
                           <Video className="w-4 h-4 mr-2" />
-                          Unirsessss
+                          Unirse
                         </Button>
                       ) : (
                         <Button 

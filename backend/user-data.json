@@ -1,0 +1,10 @@
+{
+  "email": "test@test.com",
+  "password": "test123",
+  "firstName": "Usuario",
+  "lastName": "Prueba",
+  "role": "slp",
+  "licenseNumber": "TEST123456",
+  "specialization": ["language"],
+  "yearsOfExperience": 5
+}

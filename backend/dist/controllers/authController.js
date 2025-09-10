@@ -48,6 +48,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.forgotPassword = exports.changePassword = exports.logout = exports.verifyAuth = exports.login = exports.registerChild = exports.registerSLP = void 0;
+var jwt = require("jsonwebtoken");
 var User_1 = require("../models/User");
 var auth_1 = require("../middleware/auth");
 var errorHandler_1 = require("../middleware/errorHandler");
@@ -216,7 +217,7 @@ var registerChild = function (req, res, next) { return __awaiter(void 0, void 0,
 exports.registerChild = registerChild;
 // Controlador para login
 var login = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, email, password, user, isPasswordValid, token, error_3;
+    var _a, email, password, mockUser, token_1, user, isPasswordValid, token, error_3;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k;
     return __generator(this, function (_l) {
         switch (_l.label) {
@@ -226,6 +227,53 @@ var login = function (req, res, next) { return __awaiter(void 0, void 0, void 0,
                 // Validar datos de entrada
                 if (!email || !password) {
                     throw new errorHandler_2.ValidationError('Email y contraseña son requeridos');
+                }
+                // Modo mock para desarrollo sin MongoDB
+                if (process.env['NODE_ENV'] === 'development' && process.env['USE_IN_MEMORY_DB'] === 'true') {
+                    console.log('🔧 Modo mock: Login simulado');
+                    mockUser = {
+                        _id: 'mock-user-id',
+                        email: 'kjgriman@gmail.com',
+                        password: '$2b$12$mock.hash.for.development',
+                        firstName: 'Kerbin',
+                        lastName: 'Griman',
+                        role: 'slp',
+                        profilePicture: null,
+                        slp: {
+                            licenseNumber: '123456780',
+                            specialization: ['language'],
+                            yearsOfExperience: 9,
+                            caseloadCount: 0
+                        }
+                    };
+                    // Simular verificación de contraseña
+                    if (email === 'kjgriman@gmail.com' && password === 'test123') {
+                        token_1 = jwt.sign({
+                            userId: mockUser._id,
+                            email: mockUser.email,
+                            role: mockUser.role
+                        }, process.env['JWT_SECRET'] || 'fallback-secret', { expiresIn: process.env['JWT_EXPIRES_IN'] || '24h' });
+                        res.status(200).json({
+                            success: true,
+                            message: 'Login exitoso',
+                            data: {
+                                user: {
+                                    _id: mockUser._id,
+                                    email: mockUser.email,
+                                    firstName: mockUser.firstName,
+                                    lastName: mockUser.lastName,
+                                    role: mockUser.role,
+                                    profilePicture: mockUser.profilePicture,
+                                    slp: mockUser.slp
+                                },
+                                token: token_1
+                            }
+                        });
+                        return [2 /*return*/];
+                    }
+                    else {
+                        throw new errorHandler_2.AuthenticationError('Credenciales inválidas');
+                    }
                 }
                 return [4 /*yield*/, User_1.User.findOne({ email: email })];
             case 1:

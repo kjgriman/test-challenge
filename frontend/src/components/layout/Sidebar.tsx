@@ -190,6 +190,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
           href: '/join-room',
           icon: Video,
         },
+        {
+          name: 'Diagnóstico WebRTC',
+          href: '/webrtc-diagnostics',
+          icon: Settings,
+        },
+        {
+          name: 'Prueba WebRTC',
+          href: '/webrtc-test',
+          icon: Video,
+        },
       ],
     },
     // Sección de comunicación oculta - las notificaciones están disponibles en el header

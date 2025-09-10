@@ -399,9 +399,22 @@ const therapySessionSchema = new Schema<ITherapySession>({
     transform: function(_doc: any, ret: any) {
       // Agregar campos calculados de forma segura
       try {
-        ret.duration = (this as any)?.getDuration?.() || ret.duration || 0;
-        ret.accuracy = (this as any)?.getAccuracy?.() || ret.accuracy || 0;
-        ret.isActive = (this as any)?.isActive?.() || false;
+        // Calcular duración directamente desde los campos
+        if (ret.startTime && ret.endTime) {
+          ret.duration = Math.round((new Date(ret.endTime).getTime() - new Date(ret.startTime).getTime()) / (1000 * 60));
+        } else {
+          ret.duration = ret.duration || 0;
+        }
+        
+        // Calcular precisión desde métricas
+        if (ret.metrics && ret.metrics.totalActivities > 0) {
+          ret.accuracy = Math.round((ret.metrics.correctAnswers / ret.metrics.totalActivities) * 100);
+        } else {
+          ret.accuracy = ret.accuracy || 0;
+        }
+        
+        // Determinar si está activa
+        ret.isActive = ret.status === 'active';
       } catch (error) {
         console.log('⚠️ Error en transform del modelo TherapySession:', error);
         // Valores por defecto si hay error

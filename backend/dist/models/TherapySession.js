@@ -333,12 +333,24 @@ var therapySessionSchema = new mongoose_1.Schema({
     timestamps: true,
     toJSON: {
         transform: function (_doc, ret) {
-            var _a, _b, _c;
             // Agregar campos calculados de forma segura
             try {
-                ret.duration = ((_a = this === null || this === void 0 ? void 0 : this.getDuration) === null || _a === void 0 ? void 0 : _a.call(this)) || ret.duration || 0;
-                ret.accuracy = ((_b = this === null || this === void 0 ? void 0 : this.getAccuracy) === null || _b === void 0 ? void 0 : _b.call(this)) || ret.accuracy || 0;
-                ret.isActive = ((_c = this === null || this === void 0 ? void 0 : this.isActive) === null || _c === void 0 ? void 0 : _c.call(this)) || false;
+                // Calcular duración directamente desde los campos
+                if (ret.startTime && ret.endTime) {
+                    ret.duration = Math.round((new Date(ret.endTime).getTime() - new Date(ret.startTime).getTime()) / (1000 * 60));
+                }
+                else {
+                    ret.duration = ret.duration || 0;
+                }
+                // Calcular precisión desde métricas
+                if (ret.metrics && ret.metrics.totalActivities > 0) {
+                    ret.accuracy = Math.round((ret.metrics.correctAnswers / ret.metrics.totalActivities) * 100);
+                }
+                else {
+                    ret.accuracy = ret.accuracy || 0;
+                }
+                // Determinar si está activa
+                ret.isActive = ret.status === 'active';
             }
             catch (error) {
                 console.log('⚠️ Error en transform del modelo TherapySession:', error);

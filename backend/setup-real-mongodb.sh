@@ -1,10 +1,17 @@
+#!/bin/bash
+
+# Script para configurar MongoDB Atlas con URI real
+echo "🔧 Configurando MongoDB Atlas con URI real..."
+
+# Crear archivo .env con MongoDB Atlas real
+cat > .env << 'EOF'
 # 🚀 Configuración del Backend - Variables de Entorno
 
 # Base de datos MongoDB Atlas
 MONGODB_URI=mongodb+srv://speech-therapy-user:speech-therapy-user@cluster0.bkezwbh.mongodb.net/speech-therapy?retryWrites=true&w=majority&appName=Cluster0
 
 # Autenticación JWT
-JWT_SECRET=speech-therapy-super-secret-jwt-key-2024-production
+JWT_SECRET=your-super-secret-jwt-key-here
 JWT_EXPIRES_IN=24h
 
 # Configuración del servidor
@@ -54,3 +61,12 @@ AGORA_APP_CERTIFICATE=your-agora-certificate
 
 # Configuración de monitoreo
 SENTRY_DSN=your-sentry-dsn
+EOF
+
+echo "✅ Archivo .env configurado con MongoDB Atlas real"
+echo "📋 URI configurada:"
+echo "   - Cluster: cluster0.bkezwbh.mongodb.net"
+echo "   - Base de datos: speech-therapy"
+echo "   - Usuario: speech-therapy-user"
+echo ""
+echo "🚀 Listo para conectar a MongoDB Atlas"

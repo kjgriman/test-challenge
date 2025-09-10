@@ -1,10 +1,13 @@
 const express = require('express');
 import { createServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import { Server } from 'socket.io';
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
 import mongoose from 'mongoose';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Importar rutas y middleware
 import authRoutes from './routes/auth';
@@ -12,9 +15,10 @@ import dashboardRoutes from './routes/dashboard';
 // import userRoutes from './routes/users';
 import sessionRoutes from './routes/sessions';
 import studentRoutes from './routes/students';
-import videoRoutes from './routes/video';
 import videoRoomRoutes from './routes/videoRooms';
+import evaluationRoutes from './routes/evaluations';
 import notificationRoutes from './routes/notifications';
+import passwordRoutes from './routes/password';
 // import gameRoutes from './routes/games';
 import { setupSocketHandlers } from './sockets/socketHandlers';
 import { VideoSocketHandler } from './sockets/videoSocketHandler';
@@ -35,8 +39,32 @@ console.log('📋 Environment Variables:', {
 });
 
 const app = express();
-const server = createServer(app);
-const socketCorsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+
+// Configurar HTTPS
+let server;
+const isHttps = process.env['NODE_ENV'] === 'development' && process.env['USE_HTTPS'] === 'true';
+
+if (isHttps) {
+  try {
+    const keyPath = path.join(__dirname, '..', 'ssl', 'key.pem');
+    const certPath = path.join(__dirname, '..', 'ssl', 'cert.pem');
+    
+    const options = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath)
+    };
+    
+    server = createHttpsServer(options, app);
+    console.log('🔒 Servidor HTTPS configurado');
+  } catch (error) {
+    console.warn('⚠️ No se pudieron cargar los certificados SSL, usando HTTP:', error.message);
+    server = createServer(app);
+  }
+} else {
+  server = createServer(app);
+}
+
+const socketCorsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "https://localhost:5173";
 
 console.log('🔌 WebSocket CORS Configuration:', {
   socketCorsOrigin,
@@ -125,9 +153,10 @@ app.use('/api/dashboard', dashboardRoutes);
 // app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', studentRoutes);
-app.use('/api/video', videoRoutes);
+app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/video-rooms', videoRoomRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/password', passwordRoutes);
 // app.use('/api/games', gameRoutes);
 
 // Health check endpoint
@@ -169,6 +198,14 @@ const startServer = () => {
 // Conectar a MongoDB o usar base de datos en memoria
 if (USE_IN_MEMORY_DB) {
   console.log('⚠️  Usando base de datos en memoria para desarrollo');
+  console.log('🔧 Mongoose deshabilitado - usando datos mock');
+  
+  // Deshabilitar Mongoose para evitar errores
+  // mongoose.connection.readyState = 1; // Simular conexión exitosa
+  
+  // Simplificar mock de Mongoose para evitar errores de tipos
+  console.log('🔧 Mock: Mongoose deshabilitado - usando datos mock simples');
+  
   startServer();
 } else {
   mongoose.connect(MONGODB_URI, {

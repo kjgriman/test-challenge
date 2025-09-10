@@ -23,6 +23,8 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Comentar HTTPS temporalmente para probar
+    // https: true, // Habilitar HTTPS
     proxy: {
       "/api": {
         target: process.env.VITE_API_URL || "http://localhost:3001",

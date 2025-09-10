@@ -13,6 +13,8 @@ import { useAuthStore, useIsAuthenticated, useIsInitialized } from './store/auth
 // Importar páginas (lazy loading para mejor performance)
 const LandingPage = React.lazy(() => import('./pages/Landing'));
 const LoginPage = React.lazy(() => import('./pages/Login'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPassword'));
+const ResetPasswordPage = React.lazy(() => import('./pages/ResetPassword'));
 // const RegisterSLPPage = React.lazy(() => import('./pages/auth/RegisterSLPPage'));
 // const RegisterChildPage = React.lazy(() => import('./pages/auth/RegisterChildPage'));
 const DashboardPage = React.lazy(() => import('./pages/Dashboard'));
@@ -21,6 +23,10 @@ const SessionsActivePage = React.lazy(() => import('./pages/SessionsActive'));
 const SessionsScheduledPage = React.lazy(() => import('./pages/SessionsScheduled'));
 const SessionsHistoryPage = React.lazy(() => import('./pages/SessionsHistory'));
 const StudentsPage = React.lazy(() => import('./pages/Students'));
+const AddStudentPage = React.lazy(() => import('./pages/AddStudent'));
+const StudentEvaluationsPage = React.lazy(() => import('./pages/StudentEvaluations'));
+const WebRTCDiagnosticsPage = React.lazy(() => import('./pages/WebRTCDiagnostics'));
+const WebRTCTestPage = React.lazy(() => import('./pages/WebRTCTest'));
 const NotificationsPage = React.lazy(() => import('./pages/Notifications'));
 const GamesPage = React.lazy(() => import('./pages/Games'));
 const CreateGamePage = React.lazy(() => import('./pages/CreateGame'));
@@ -114,6 +120,38 @@ const App: React.FC = () => {
               >
                 <Suspense fallback={<PageLoader />}>
                   <LoginPage />
+                </Suspense>
+              </motion.div>
+            }
+          />
+
+          <Route
+            path="/forgot-password"
+            element={
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Suspense fallback={<PageLoader />}>
+                  <ForgotPasswordPage />
+                </Suspense>
+              </motion.div>
+            }
+          />
+
+          <Route
+            path="/reset-password"
+            element={
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Suspense fallback={<PageLoader />}>
+                  <ResetPasswordPage />
                 </Suspense>
               </motion.div>
             }
@@ -252,6 +290,60 @@ const App: React.FC = () => {
                 <Layout>
                   <Suspense fallback={<PageLoader />}>
                     <StudentsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/students/add"
+            element={
+              <ProtectedRoute requiredRole="slp">
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <AddStudentPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/students/evaluations"
+            element={
+              <ProtectedRoute requiredRole="slp">
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <StudentEvaluationsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Página de diagnóstico WebRTC */}
+          <Route
+            path="/webrtc-diagnostics"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <WebRTCDiagnosticsPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Página de prueba WebRTC */}
+          <Route
+            path="/webrtc-test"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <WebRTCTestPage />
                   </Suspense>
                 </Layout>
               </ProtectedRoute>

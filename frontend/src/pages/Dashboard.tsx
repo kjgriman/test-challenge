@@ -110,7 +110,7 @@ const mockUpcomingSessions: UpcomingSession[] = [
 const Dashboard: React.FC = () => {
   const userRole = useUserRole();
   const profileInfo = useProfileInfo();
-  const { token } = useAuthStore();
+  const { token, apiRequest } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats>(mockStats);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>(mockRecentSessions);
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>(mockUpcomingSessions);
@@ -126,42 +126,21 @@ const Dashboard: React.FC = () => {
       setIsLoading(true);
       
       // Cargar estadísticas
-      const statsResponse = await fetch('/api/dashboard/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData.data);
+      const statsResponse = await apiRequest('/dashboard/stats', 'GET');
+      if (statsResponse.success) {
+        setStats(statsResponse.data);
       }
       
       // Cargar sesiones recientes
-      const recentResponse = await fetch('/api/dashboard/recent-sessions', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (recentResponse.ok) {
-        const recentData = await recentResponse.json();
-        setRecentSessions(recentData.data);
+      const recentResponse = await apiRequest('/dashboard/recent-sessions', 'GET');
+      if (recentResponse.success) {
+        setRecentSessions(recentResponse.data);
       }
       
       // Cargar próximas sesiones
-      const upcomingResponse = await fetch('/api/dashboard/upcoming-sessions', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (upcomingResponse.ok) {
-        const upcomingData = await upcomingResponse.json();
-        setUpcomingSessions(upcomingData.data);
+      const upcomingResponse = await apiRequest('/dashboard/upcoming-sessions', 'GET');
+      if (upcomingResponse.success) {
+        setUpcomingSessions(upcomingResponse.data);
       }
       
     } catch (error) {

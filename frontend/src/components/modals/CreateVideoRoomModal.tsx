@@ -49,7 +49,7 @@ const CreateVideoRoomModal: React.FC<CreateVideoRoomModalProps> = ({
 
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms`, {
+      const response = await fetch(`http://localhost:3001/api/video-rooms`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,10 +1,17 @@
+#!/bin/bash
+
+# Script para configurar MongoDB Atlas
+echo "🔧 Configurando MongoDB Atlas..."
+
+# Crear archivo .env con MongoDB Atlas
+cat > .env << 'EOF'
 # 🚀 Configuración del Backend - Variables de Entorno
 
 # Base de datos MongoDB Atlas
-MONGODB_URI=mongodb+srv://speech-therapy-user:speech-therapy-user@cluster0.bkezwbh.mongodb.net/speech-therapy?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://test:test123@cluster0.mongodb.net/speech-therapy-platform?retryWrites=true&w=majority
 
 # Autenticación JWT
-JWT_SECRET=speech-therapy-super-secret-jwt-key-2024-production
+JWT_SECRET=your-super-secret-jwt-key-here
 JWT_EXPIRES_IN=24h
 
 # Configuración del servidor
@@ -54,3 +61,14 @@ AGORA_APP_CERTIFICATE=your-agora-certificate
 
 # Configuración de monitoreo
 SENTRY_DSN=your-sentry-dsn
+EOF
+
+echo "✅ Archivo .env configurado con MongoDB Atlas"
+echo "📋 Variables configuradas:"
+echo "   - MONGODB_URI: MongoDB Atlas"
+echo "   - NODE_ENV: development"
+echo "   - PORT: 3001"
+echo "   - FRONTEND_URL: http://localhost:5173"
+echo ""
+echo "⚠️  IMPORTANTE: Necesitas configurar tu propia URI de MongoDB Atlas"
+echo "   Reemplaza 'test:test123@cluster0.mongodb.net' con tus credenciales reales"

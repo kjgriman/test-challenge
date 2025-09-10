@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Plus,
@@ -41,7 +42,8 @@ interface Student {
 
 // Componente principal
 const Students: React.FC = () => {
-  const { user, token } = useAuthStore();
+  const { user, token, apiRequest } = useAuthStore();
+  const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,16 +64,10 @@ const Students: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/students', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiRequest('/students', 'GET');
 
-      if (response.ok) {
-        const data = await response.json();
-        setStudents(data.data.students || []);
+      if (response.success) {
+        setStudents(response.data.students || []);
       } else {
         setError('Error al cargar los estudiantes');
       }
@@ -123,19 +119,12 @@ const Students: React.FC = () => {
     if (!token || !confirm('¿Estás seguro de que quieres eliminar este estudiante?')) return;
 
     try {
-      const response = await fetch(`/api/students/${studentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiRequest(`/students/${studentId}`, 'DELETE');
 
-      if (response.ok) {
+      if (response.success) {
         loadStudents(); // Recargar estudiantes
       } else {
-        const errorData = await response.json();
-        setError(errorData.error?.message || 'Error al eliminar el estudiante');
+        setError(response.error?.message || 'Error al eliminar el estudiante');
       }
     } catch (err) {
       setError('Error de conexión');
@@ -216,7 +205,7 @@ const Students: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate('/students/add')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors duration-200"
             >
               <Plus className="h-5 w-5" />

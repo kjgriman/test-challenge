@@ -1,15 +1,22 @@
+#!/bin/bash
+
+echo "🔧 Configurando HTTP para desarrollo local..."
+
+# Crear archivo .env con configuración HTTP
+cat > .env << 'EOF'
 # 🚀 Configuración del Backend - Variables de Entorno
 
-# Base de datos MongoDB Atlas
-MONGODB_URI=mongodb+srv://speech-therapy-user:speech-therapy-user@cluster0.bkezwbh.mongodb.net/speech-therapy?retryWrites=true&w=majority&appName=Cluster0
+# Base de datos MongoDB
+MONGODB_URI=mongodb+srv://kjgriman:test123@cluster0.mongodb.net/speech-therapy?retryWrites=true&w=majority
 
 # Autenticación JWT
-JWT_SECRET=speech-therapy-super-secret-jwt-key-2024-production
+JWT_SECRET=your-super-secret-jwt-key-here
 JWT_EXPIRES_IN=24h
 
 # Configuración del servidor
 PORT=3001
 NODE_ENV=development
+USE_HTTPS=false
 
 # URLs de la aplicación
 FRONTEND_URL=http://localhost:5173
@@ -31,26 +38,30 @@ SOCKET_CORS_ORIGIN=http://localhost:5173
 # Configuración de seguridad
 BCRYPT_ROUNDS=12
 
-# Configuración de sesiones
+# Configuración de sesiones (si usas express-session)
 SESSION_SECRET=your-session-secret-key
 
-# Configuración de archivos
+# Configuración de archivos (si implementas uploads)
 MAX_FILE_SIZE=10485760
 UPLOAD_PATH=./uploads
 
-# Configuración de email
+# Configuración de email (si implementas notificaciones)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 
-# Configuración de IA
+# Configuración de IA (para resúmenes automáticos)
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-3.5-turbo
 
-# Configuración de videollamadas
+# Configuración de videollamadas (si usas servicios externos)
 AGORA_APP_ID=your-agora-app-id
 AGORA_APP_CERTIFICATE=your-agora-certificate
 
-# Configuración de monitoreo
+# Configuración de monitoreo (opcional)
 SENTRY_DSN=your-sentry-dsn
+EOF
+
+echo "✅ Archivo .env configurado con HTTP"
+echo "🚀 Listo para ejecutar con HTTP"

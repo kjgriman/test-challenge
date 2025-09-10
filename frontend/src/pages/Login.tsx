@@ -385,16 +385,28 @@ const Login: React.FC = () => {
           </form>
 
           {/* Enlaces adicionales */}
-          <div className="mt-6 text-center">
-            <button
-              onClick={toggleMode}
-              className="text-primary-600 hover:text-primary-700 font-medium text-sm transition-colors duration-200"
-            >
-              {isLogin 
-                ? '¿No tienes cuenta? Crear una' 
-                : '¿Ya tienes cuenta? Iniciar sesión'
-              }
-            </button>
+          <div className="mt-6 text-center space-y-2">
+            {isLogin && (
+              <div>
+                <button
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors duration-200"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+            )}
+            <div>
+              <button
+                onClick={toggleMode}
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm transition-colors duration-200"
+              >
+                {isLogin 
+                  ? '¿No tienes cuenta? Crear una' 
+                  : '¿Ya tienes cuenta? Iniciar sesión'
+                }
+              </button>
+            </div>
           </div>
 
           {/* Separador */}

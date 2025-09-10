@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import * as jwt from 'jsonwebtoken';
 import { User, UserRole, SkillLevel } from '../models/User';
 import { generateToken } from '../middleware/auth';
 import { sendSuccessResponse } from '../middleware/errorHandler';
@@ -218,6 +219,61 @@ export const login = async (
     // Validar datos de entrada
     if (!email || !password) {
       throw new ValidationError('Email y contraseña son requeridos');
+    }
+    
+    // Modo mock para desarrollo sin MongoDB
+    if (process.env['NODE_ENV'] === 'development' && process.env['USE_IN_MEMORY_DB'] === 'true') {
+      console.log('🔧 Modo mock: Login simulado');
+      
+      // Usuario mock para desarrollo
+      const mockUser = {
+        _id: 'mock-user-id',
+        email: 'kjgriman@gmail.com',
+        password: '$2b$12$mock.hash.for.development',
+        firstName: 'Kerbin',
+        lastName: 'Griman',
+        role: 'slp',
+        profilePicture: null,
+        slp: {
+          licenseNumber: '123456780',
+          specialization: ['language'],
+          yearsOfExperience: 9,
+          caseloadCount: 0
+        }
+      };
+      
+      // Simular verificación de contraseña
+      if (email === 'kjgriman@gmail.com' && password === 'test123') {
+        const token = jwt.sign(
+          { 
+            userId: mockUser._id, 
+            email: mockUser.email, 
+            role: mockUser.role 
+          },
+          process.env['JWT_SECRET'] || 'fallback-secret',
+          { expiresIn: process.env['JWT_EXPIRES_IN'] || '24h' } as jwt.SignOptions
+        );
+        
+        res.status(200).json({
+          success: true,
+          message: 'Login exitoso',
+          data: {
+            user: {
+              _id: mockUser._id,
+              email: mockUser.email,
+              firstName: mockUser.firstName,
+              lastName: mockUser.lastName,
+              role: mockUser.role,
+              profilePicture: mockUser.profilePicture,
+              slp: mockUser.slp
+            },
+            token
+          }
+        });
+        return;
+      } else {
+        throw new AuthenticationError('Credenciales inválidas');
+      }
     }
     
     // Buscar usuario por email
