@@ -12,221 +12,188 @@ import * as path from 'path';
 // Importar rutas y middleware
 import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
-// import userRoutes from './routes/users';
 import sessionRoutes from './routes/sessions';
 import studentRoutes from './routes/students';
 import videoRoomRoutes from './routes/videoRooms';
 import evaluationRoutes from './routes/evaluations';
 import notificationRoutes from './routes/notifications';
 import passwordRoutes from './routes/password';
-// import gameRoutes from './routes/games';
 import { setupSocketHandlers } from './sockets/socketHandlers';
 import { VideoSocketHandler } from './sockets/videoSocketHandler';
-// import { Game } from './models/Game'; // Temporarily disabled due to TypeScript errors
+import { setupVideoRoomHandlers } from './sockets/videoRoomHandlers';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 
 // Cargar variables de entorno
 dotenv.config();
 
-// Log de todas las variables de entorno relevantes
+// Configuración del servidor
+const PORT = process.env.PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://localhost:5173';
+const VERCEL_URL = process.env.VERCEL_URL;
+const corsOrigin = VERCEL_URL ? `https://${VERCEL_URL}` : FRONTEND_URL;
+const socketCorsOrigin = VERCEL_URL ? `https://${VERCEL_URL}` : FRONTEND_URL;
+const USE_HTTPS = process.env.USE_HTTPS === 'true';
+
 console.log('📋 Environment Variables:', {
-  NODE_ENV: process.env['NODE_ENV'],
-  PORT: process.env['PORT'],
-  FRONTEND_URL: process.env['FRONTEND_URL'],
-  VERCEL_URL: process.env['VERCEL_URL'],
-  MONGODB_URI: process.env['MONGODB_URI'] ? '***CONFIGURED***' : 'NOT_SET'
+  NODE_ENV: process.env.NODE_ENV,
+  PORT,
+  FRONTEND_URL,
+  VERCEL_URL,
+  MONGODB_URI: process.env.MONGODB_URI ? '***CONFIGURED***' : 'NOT SET',
+  USE_HTTPS
 });
 
-const app = express();
-
-// Configurar HTTPS
-let server;
-const isHttps = process.env['NODE_ENV'] === 'development' && process.env['USE_HTTPS'] === 'true';
-
-if (isHttps) {
-  try {
-    const keyPath = path.join(__dirname, '..', 'ssl', 'key.pem');
-    const certPath = path.join(__dirname, '..', 'ssl', 'cert.pem');
-    
-    const options = {
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath)
-    };
-    
-    server = createHttpsServer(options, app);
-    console.log('🔒 Servidor HTTPS configurado');
-  } catch (error) {
-    console.warn('⚠️ No se pudieron cargar los certificados SSL, usando HTTP:', error.message);
-    server = createServer(app);
-  }
-} else {
-  server = createServer(app);
-}
-
-const socketCorsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "https://localhost:5173";
-
-console.log('🔌 WebSocket CORS Configuration:', {
-  socketCorsOrigin,
-  methods: ["GET", "POST", "OPTIONS"]
-});
-
-const io = new Server(server, {
-  cors: {
-    origin: socketCorsOrigin,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-    credentials: true
-  }
-});
-
-const PORT = process.env['PORT'] || 3001;
-const MONGODB_URI = process.env['MONGODB_URI'] || 'mongodb://127.0.0.1:27017/speech-therapy';
-
-// Para desarrollo sin MongoDB, usar base de datos en memoria
-const USE_IN_MEMORY_DB = process.env['NODE_ENV'] === 'development' && !process.env['MONGODB_URI'];
-
-// Middleware de seguridad y parsing
-app.use(helmet());
-
-// Configuración de CORS más permisiva para desarrollo
-const corsOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
+// Configuración CORS
+const corsOptions = {
+  origin: corsOrigin,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
 
 console.log('🔧 CORS Configuration:', {
-  FRONTEND_URL: process.env['FRONTEND_URL'],
-  VERCEL_URL: process.env['VERCEL_URL'],
+  FRONTEND_URL,
+  VERCEL_URL,
   corsOrigin,
-  NODE_ENV: process.env['NODE_ENV']
+  NODE_ENV: process.env.NODE_ENV
 });
 
-app.use(cors({
-  origin: corsOrigin,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+// Crear aplicación Express
+const app = express();
+
+// Middleware de seguridad
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "wss:", "https:"],
+      mediaSrc: ["'self'", "blob:"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
 }));
 
-// Middleware adicional para manejar preflight OPTIONS
-app.use((req, res, next) => {
-  const requestOrigin = req.headers.origin;
-  const allowedOrigin = process.env['FRONTEND_URL'] || process.env['VERCEL_URL'] || "https://test-challenge-ul34.vercel.app" || "http://localhost:5173";
-  
-  console.log('🌐 CORS Request:', {
-    method: req.method,
-    path: req.path,
-    origin: requestOrigin,
-    allowedOrigin,
-    userAgent: req.get('User-Agent')
-  });
-  
-  res.header('Access-Control-Allow-Origin', allowedOrigin);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    console.log('✅ Preflight OPTIONS request handled');
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+// Middleware
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(rateLimiter);
 
-// Rate limiting para prevenir abuso (solo en producción)
-if (process.env['NODE_ENV'] !== 'development') {
-  app.use(rateLimiter);
-}
-
-// Logging middleware para debugging
-app.use((req, _res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
+// Rutas de salud
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    https: USE_HTTPS
+  });
 });
 
 // Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-// app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', studentRoutes);
-app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/video-rooms', videoRoomRoutes);
+app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/password', passwordRoutes);
-// app.use('/api/games', gameRoutes);
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
-});
-
-// Configurar Socket.io handlers
-setupSocketHandlers(io);
-
-// Configurar Video Socket Handler
-const videoSocketHandler = new VideoSocketHandler(server);
-
-// Middleware de manejo de errores (debe ir al final)
+// Middleware de manejo de errores
 app.use(errorHandler);
 
-// Manejo de rutas no encontradas
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    error: 'Ruta no encontrada',
-    path: req.originalUrl 
-  });
-});
-
-// Función para iniciar el servidor
-const startServer = () => {
-  server.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
-    console.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT}`);
-    console.log(`🌐 API disponible en http://0.0.0.0:${PORT}/api`);
-    console.log(`🌍 Entorno: ${process.env['NODE_ENV'] || 'development'}`);
-  });
+// Configuración de MongoDB
+const connectToMongoDB = async () => {
+  try {
+    if (process.env.MONGODB_URI) {
+      await mongoose.connect(process.env.MONGODB_URI);
+      console.log('✅ Conectado a MongoDB');
+    } else {
+      console.log('⚠️ MONGODB_URI no configurado, usando base de datos en memoria');
+    }
+  } catch (error) {
+    console.error('❌ Error conectando a MongoDB:', error);
+    console.log('💡 Para desarrollo sin MongoDB, establece NODE_ENV=development');
+  }
 };
 
-// Conectar a MongoDB o usar base de datos en memoria
-if (USE_IN_MEMORY_DB) {
-  console.log('⚠️  Usando base de datos en memoria para desarrollo');
-  console.log('🔧 Mongoose deshabilitado - usando datos mock');
-  
-  // Deshabilitar Mongoose para evitar errores
-  // mongoose.connection.readyState = 1; // Simular conexión exitosa
-  
-  // Simplificar mock de Mongoose para evitar errores de tipos
-  console.log('🔧 Mock: Mongoose deshabilitado - usando datos mock simples');
-  
-  startServer();
+// Conectar a MongoDB
+connectToMongoDB();
+
+// Crear servidor HTTP o HTTPS
+let server;
+if (USE_HTTPS) {
+  try {
+    // Configuración SSL para producción
+    const sslOptions = {
+      key: fs.readFileSync(path.join(__dirname, '../ssl/private-key.pem')),
+      cert: fs.readFileSync(path.join(__dirname, '../ssl/certificate.pem'))
+    };
+    
+    server = createHttpsServer(sslOptions, app);
+    console.log('🔒 Servidor HTTPS configurado');
+  } catch (error) {
+    console.error('❌ Error configurando HTTPS:', error);
+    console.log('🔄 Usando HTTP como fallback');
+    server = createServer(app);
+  }
 } else {
-  mongoose.connect(MONGODB_URI, {
-    family: 4, // Forzar IPv4
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-  })
-    .then(() => {
-      console.log('✅ Conectado a MongoDB');
-      startServer();
-    })
-    .catch((error) => {
-      console.error('❌ Error conectando a MongoDB:', error);
-      console.log('💡 Para desarrollo sin MongoDB, establece NODE_ENV=development');
-      process.exit(1);
-    });
+  server = createServer(app);
+  console.log('🌐 Servidor HTTP configurado');
 }
 
-// Manejo graceful de cierre
+// Configuración de Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: socketCorsOrigin,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+
+console.log('🔌 WebSocket CORS Configuration:', {
+  socketCorsOrigin,
+  methods: ['GET', 'POST', 'OPTIONS']
+});
+
+// Configurar handlers de Socket.IO
+setupSocketHandlers(io);
+setupVideoRoomHandlers(io);
+
+// Configurar VideoSocketHandler
+const videoSocketHandler = new VideoSocketHandler(io);
+
+console.log('🔌 WebSocket handlers configurados');
+
+// Iniciar servidor
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
+  console.log(`📡 WebSocket disponible en ${USE_HTTPS ? 'wss' : 'ws'}://0.0.0.0:${PORT}`);
+  console.log(`🌐 API disponible en ${USE_HTTPS ? 'https' : 'http'}://0.0.0.0:${PORT}/api`);
+  console.log(`🌍 Entorno: ${process.env.NODE_ENV}`);
+  console.log(`🔒 HTTPS: ${USE_HTTPS ? 'Habilitado' : 'Deshabilitado'}`);
+});
+
+// Manejo de errores del servidor
+server.on('error', (error: any) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Puerto ${PORT} ya está en uso`);
+    console.log('💡 Intenta cambiar el puerto o detener el proceso que lo está usando');
+  } else {
+    console.error('❌ Error del servidor:', error);
+  }
+});
+
+// Manejo de cierre graceful
 process.on('SIGTERM', () => {
-  console.log('🔄 Recibido SIGTERM, cerrando servidor...');
+  console.log('🛑 Recibida señal SIGTERM, cerrando servidor...');
   server.close(() => {
     console.log('✅ Servidor cerrado');
     mongoose.connection.close();
@@ -235,7 +202,7 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-  console.log('🔄 Recibido SIGINT, cerrando servidor...');
+  console.log('🛑 Recibida señal SIGINT, cerrando servidor...');
   server.close(() => {
     console.log('✅ Servidor cerrado');
     mongoose.connection.close();
@@ -243,5 +210,4 @@ process.on('SIGINT', () => {
   });
 });
 
-export { app, io };
-
+export default app;

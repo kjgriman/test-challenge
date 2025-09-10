@@ -221,6 +221,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
           href: '/video-conference',
           icon: Camera,
         },
+        {
+          name: 'Sistema Full',
+          href: '/full-video-conference',
+          icon: Camera,
+        },
       ],
     },
     // Sección de comunicación oculta - las notificaciones están disponibles en el header

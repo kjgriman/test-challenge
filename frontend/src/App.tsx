@@ -31,6 +31,7 @@ const WebRTCTestSimplePage = React.lazy(() => import('./pages/WebRTCTestSimple')
 const PeerJSTestPage = React.lazy(() => import('./pages/PeerJSTest'));
 const HTTPSDiagnosticsPage = React.lazy(() => import('./pages/HTTPSDiagnostics'));
 const VideoConferenceRoomPage = React.lazy(() => import('./pages/VideoConferenceRoom'));
+const FullVideoConferencePage = React.lazy(() => import('./pages/FullVideoConference'));
 const NotificationsPage = React.lazy(() => import('./pages/Notifications'));
 const GamesPage = React.lazy(() => import('./pages/Games'));
 const CreateGamePage = React.lazy(() => import('./pages/CreateGame'));
@@ -396,6 +397,18 @@ const App: React.FC = () => {
                 <Layout>
                   <Suspense fallback={<PageLoader />}>
                     <VideoConferenceRoomPage />
+                  </Suspense>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/full-video-conference"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <FullVideoConferencePage />
                   </Suspense>
                 </Layout>
               </ProtectedRoute>
