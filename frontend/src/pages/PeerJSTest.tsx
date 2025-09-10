@@ -163,6 +163,87 @@ const PeerJSTest: React.FC = () => {
     }
   }, [addLog]);
 
+  const startVideoSimulated = useCallback(async () => {
+    try {
+      setError(null);
+      addLog('🎥 Iniciando video simulado (para desarrollo)...');
+      
+      // Crear un canvas con video simulado
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('No se pudo crear contexto de canvas');
+      }
+      
+      // Función para dibujar frame simulado
+      const drawFrame = () => {
+        // Fondo azul
+        ctx.fillStyle = '#1e40af';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Círculo blanco (cara)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, 100, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Ojos
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2 - 30, canvas.height / 2 - 20, 10, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2 + 30, canvas.height / 2 - 20, 10, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Boca
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2 + 20, 20, 0, Math.PI);
+        ctx.stroke();
+        
+        // Texto
+        ctx.fillStyle = '#000000';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Video Simulado', canvas.width / 2, canvas.height - 50);
+        ctx.fillText('Para Desarrollo', canvas.width / 2, canvas.height - 20);
+      };
+      
+      // Dibujar frame inicial
+      drawFrame();
+      
+      // Crear stream desde canvas
+      const stream = canvas.captureStream(30); // 30 FPS
+      
+      addLog('✅ Stream de video simulado creado');
+      
+      // Mostrar video
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        addLog('✅ Video simulado mostrado');
+      }
+      
+      // Simular información del stream
+      addLog('📹 Video: Simulado');
+      addLog('📹 Video activado');
+      addLog('🎤 Audio: Simulado');
+      addLog('🎤 Audio activado');
+      
+      addLog('🎉 ¡Video simulado funcionando!');
+      addLog('💡 Esto permite continuar el desarrollo sin WebRTC');
+      
+      setIsConnected(true);
+      
+    } catch (error) {
+      const errorMessage = `Error iniciando video simulado: ${(error as Error).message}`;
+      addLog(`❌ ${errorMessage}`);
+      setError(errorMessage);
+    }
+  }, [addLog]);
+
   const clearLogs = useCallback(() => {
     setLogs([]);
   }, []);
@@ -187,6 +268,9 @@ const PeerJSTest: React.FC = () => {
               </Button>
               <Button onClick={startVideoPeerJS} variant="default">
                 🎥 Iniciar Video con PeerJS
+              </Button>
+              <Button onClick={startVideoSimulated} variant="secondary">
+                🎭 Video Simulado (Desarrollo)
               </Button>
               <Button onClick={clearLogs} variant="outline">
                 🗑️ Limpiar Logs
