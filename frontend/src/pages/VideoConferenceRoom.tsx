@@ -223,7 +223,18 @@ const VideoConferenceRoom: React.FC = () => {
   const createPeerConnection = useCallback(() => {
     if (!socket || !currentRoom) return;
 
-    const peerConnection = new RTCPeerConnection(rtcConfig);
+    // Verificar si RTCPeerConnection está disponible
+    if (!window.RTCPeerConnection && !(window as any).webkitRTCPeerConnection && !(window as any).mozRTCPeerConnection) {
+      console.error('❌ RTCPeerConnection no está disponible');
+      toast.error('RTCPeerConnection no está disponible. Verifica la configuración de Chrome.');
+      return;
+    }
+
+    const RTCPeerConnectionClass = window.RTCPeerConnection || 
+                                  (window as any).webkitRTCPeerConnection || 
+                                  (window as any).mozRTCPeerConnection;
+
+    const peerConnection = new RTCPeerConnectionClass(rtcConfig);
 
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
@@ -302,6 +313,36 @@ const VideoConferenceRoom: React.FC = () => {
     }
   }, [socket, currentRoom, createPeerConnection]);
 
+  // Verificar WebRTC
+  const checkWebRTC = useCallback(() => {
+    const hasRTCPeerConnection = !!(
+      window.RTCPeerConnection || 
+      (window as any).webkitRTCPeerConnection || 
+      (window as any).mozRTCPeerConnection
+    );
+
+    const hasGetUserMedia = !!(
+      navigator.mediaDevices?.getUserMedia ||
+      navigator.getUserMedia ||
+      (navigator as any).webkitGetUserMedia ||
+      (navigator as any).mozGetUserMedia
+    );
+
+    console.log('🔍 === DIAGNÓSTICO WEBRTC ===');
+    console.log(`📡 RTCPeerConnection: ${hasRTCPeerConnection ? '✅' : '❌'}`);
+    console.log(`📹 getUserMedia: ${hasGetUserMedia ? '✅' : '❌'}`);
+    console.log(`🌐 Protocolo: ${window.location.protocol}`);
+    console.log(`🏠 Hostname: ${window.location.hostname}`);
+
+    if (!hasRTCPeerConnection) {
+      toast.error('RTCPeerConnection no está disponible. Verifica flags de Chrome.');
+    } else {
+      toast.success('WebRTC está disponible');
+    }
+
+    return hasRTCPeerConnection;
+  }, []);
+
   // Efectos
   useEffect(() => {
     connectSocket();
@@ -335,6 +376,9 @@ const VideoConferenceRoom: React.FC = () => {
               <span className="text-sm">
                 {isConnected ? 'Conectado' : 'Desconectado'}
               </span>
+              <Button onClick={checkWebRTC} variant="outline" size="sm">
+                🔍 Verificar WebRTC
+              </Button>
             </div>
 
             {error && (
