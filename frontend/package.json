@@ -13,7 +13,8 @@
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
