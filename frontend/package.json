@@ -14,7 +14,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "vercel-build": "echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && npm run build",
+    "vercel-build": "echo '🔍 Environment check...' && echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && echo 'Working directory:' && pwd && echo '📦 Installing dependencies...' && npm install && echo '🔨 Starting build...' && npm run build",
     "postinstall": "echo 'Dependencies installed successfully'"
   },
   "dependencies": {
