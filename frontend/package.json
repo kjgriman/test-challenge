@@ -5,16 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "echo '🔨 Starting TypeScript compilation...' && tsc --noEmit && echo '✅ TypeScript compilation successful!' && echo '🚀 Starting Vite build...' && vite build && echo '🎉 Build completed successfully!'",
-    "build:tsc": "tsc --noEmit",
-    "build:vite": "vite build",
+    "build": "echo '🔨 Starting build process...' && npm run build:tsc && npm run build:vite && echo '🎉 Build completed successfully!'",
+    "build:tsc": "echo '📝 TypeScript compilation...' && tsc --noEmit && echo '✅ TypeScript OK'",
+    "build:vite": "echo '🚀 Vite build...' && vite build && echo '✅ Vite build OK'",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "vercel-build": "npm run build"
+    "vercel-build": "echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && npm run build",
+    "postinstall": "echo 'Dependencies installed successfully'"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
