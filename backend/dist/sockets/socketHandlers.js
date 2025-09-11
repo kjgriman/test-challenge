@@ -40,7 +40,8 @@ exports.setupSocketHandlers = void 0;
 var TherapySession_1 = require("../models/TherapySession");
 var User_1 = require("../models/User");
 var jwt = require("jsonwebtoken");
-var gameHandlers_1 = require("./gameHandlers");
+// Usar el mismo JWT_SECRET que el middleware HTTP
+var JWT_SECRET = process.env['JWT_SECRET'] || 'your-secret-key';
 // Almacenar estados de juegos activos
 var activeGames = new Map();
 // Almacenar conexiones de usuarios por sesión
@@ -52,18 +53,24 @@ var authenticateSocket = function (socket, token) { return __awaiter(void 0, voi
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                decoded = jwt.verify(token, process.env['JWT_SECRET'] || 'your-secret-key');
+                console.log('🔍 Autenticando socket con token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+                console.log('🔍 JWT_SECRET disponible:', JWT_SECRET ? 'SÍ' : 'NO');
+                decoded = jwt.verify(token, JWT_SECRET);
+                console.log('✅ Token decodificado:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
                 return [4 /*yield*/, User_1.User.findById(decoded.userId)];
             case 1:
                 user = _a.sent();
                 if (!user) {
+                    console.log('❌ Usuario no encontrado en BD:', decoded.userId);
                     return [2 /*return*/, false];
                 }
                 socket.userId = user._id.toString();
                 socket.userRole = user.role;
+                console.log('✅ Socket autenticado:', { userId: socket.userId, role: socket.userRole });
                 return [2 /*return*/, true];
             case 2:
                 error_1 = _a.sent();
+                console.log('❌ Error autenticando socket:', error_1);
                 return [2 /*return*/, false];
             case 3: return [2 /*return*/];
         }
@@ -81,15 +88,12 @@ var verifySessionAccess = function (socket, sessionId) { return __awaiter(void 0
                 session = _a.sent();
                 if (!session)
                     return [2 /*return*/, false];
-                if (socket.userRole === 'slp') {
-                    return [2 /*return*/, session.slpId.toString() === socket.userId];
-                }
-                else {
-                    return [2 /*return*/, session.childId.toString() === socket.userId];
-                }
-                return [3 /*break*/, 3];
+                // Verificar que el usuario sea parte de la sesión
+                return [2 /*return*/, session.slpId.toString() === socket.userId ||
+                        session.childId.toString() === socket.userId];
             case 2:
                 error_2 = _a.sent();
+                console.error('Error verificando acceso a sesión:', error_2);
                 return [2 /*return*/, false];
             case 3: return [2 /*return*/];
         }
@@ -97,291 +101,260 @@ var verifySessionAccess = function (socket, sessionId) { return __awaiter(void 0
 }); };
 // Configurar manejadores de WebSocket
 var setupSocketHandlers = function (io) {
-    // Configurar handlers de juegos
-    var gameHandlers = new gameHandlers_1.default(io);
-    gameHandlers.initialize();
-    // Middleware de autenticación
+    // Middleware de autenticación global
     io.use(function (socket, next) { return __awaiter(void 0, void 0, void 0, function () {
-        var token, isAuthenticated;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var token, isAuthenticated, error_3;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
-                    token = socket.handshake.auth['token'];
+                    console.log('🔐 Middleware de autenticación WebSocket ejecutándose');
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    token = socket.handshake.auth.token || ((_a = socket.handshake.headers.authorization) === null || _a === void 0 ? void 0 : _a.replace('Bearer ', ''));
+                    console.log('🔑 Token en handshake:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
                     if (!token) {
+                        console.log('❌ No se proporcionó token');
                         return [2 /*return*/, next(new Error('Token no proporcionado'))];
                     }
                     return [4 /*yield*/, authenticateSocket(socket, token)];
-                case 1:
-                    isAuthenticated = _a.sent();
+                case 2:
+                    isAuthenticated = _b.sent();
                     if (!isAuthenticated) {
+                        console.log('❌ Falló la autenticación');
                         return [2 /*return*/, next(new Error('Token inválido'))];
                     }
+                    console.log('✅ Autenticación exitosa, continuando...');
+                    console.log('🔍 Llamando next()...');
                     next();
-                    return [2 /*return*/];
+                    console.log('🔍 next() ejecutado');
+                    return [3 /*break*/, 4];
+                case 3:
+                    error_3 = _b.sent();
+                    console.log('❌ Error en middleware de autenticación:', error_3);
+                    next(new Error('Error de autenticación'));
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
             }
         });
     }); });
     // Conexión de socket
     io.on('connection', function (socket) {
-        console.log("\uD83D\uDD0C Usuario conectado: ".concat(socket.userId, " (").concat(socket.userRole, ")"));
-        // Unirse a sesión
-        socket.on('join-session', function (sessionId) { return __awaiter(void 0, void 0, void 0, function () {
-            var hasAccess, gameState, error_3;
+        console.log('🎯 HANDLER DE CONEXIÓN EJECUTÁNDOSE');
+        console.log('🔌 Socket ID:', socket.id);
+        console.log('🔌 Handshake auth:', socket.handshake.auth);
+        // Unirse a sesión de juego
+        socket.on('joinGameSession', function (data) { return __awaiter(void 0, void 0, void 0, function () {
+            var sessionId, userId, userRole, roomName, roomSockets, participants, error_4;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        sessionId = data.sessionId, userId = data.userId, userRole = data.userRole;
+                        if (!sessionId || !userId || !userRole) {
+                            socket.emit('gameError', 'Datos de sesión de juego requeridos');
+                            return [2 /*return*/];
+                        }
+                        // Verificar que el userId coincida con el usuario autenticado
+                        if (socket.userId !== userId) {
+                            console.log('❌ UserId no coincide:', { socketUserId: socket.userId, requestUserId: userId });
+                            socket.emit('gameError', 'Token de autenticación inválido');
+                            return [2 /*return*/];
+                        }
+                        roomName = "game-".concat(sessionId);
+                        return [4 /*yield*/, socket.join(roomName)];
+                    case 1:
+                        _a.sent();
+                        console.log("\uD83C\uDFAE Usuario ".concat(userId, " se uni\u00F3 a la sala de juego ").concat(sessionId));
+                        // Notificar a otros participantes
+                        socket.to(roomName).emit('participantJoined', {
+                            userId: userId,
+                            name: 'Usuario', // TODO: Obtener nombre real del usuario
+                            role: userRole,
+                            isConnected: true,
+                            score: 0
+                        });
+                        return [4 /*yield*/, io.in(roomName).fetchSockets()];
+                    case 2:
+                        roomSockets = _a.sent();
+                        participants = roomSockets.map(function (s) { return ({
+                            userId: s.userId,
+                            name: 'Usuario', // TODO: Obtener nombre real del usuario
+                            role: s.userRole || 'child',
+                            isConnected: true,
+                            score: 0
+                        }); });
+                        // Enviar estado inicial del juego
+                        socket.emit('gameStateUpdate', {
+                            isPlaying: false,
+                            currentTurn: 'slp',
+                            score: { slp: 0, child: 0 },
+                            round: 1,
+                            maxRounds: 10,
+                            currentWord: null,
+                            selectedAnswer: null,
+                            isCorrect: null,
+                            timeRemaining: 30,
+                            isPaused: false,
+                            participants: participants
+                        });
+                        // Confirmar unión
+                        socket.emit('joinedGameSession', {
+                            sessionId: sessionId,
+                            userId: userId,
+                            userRole: userRole
+                        });
+                        return [3 /*break*/, 4];
+                    case 3:
+                        error_4 = _a.sent();
+                        console.error('Error uniéndose a sesión de juego:', error_4);
+                        socket.emit('gameError', 'Error interno del servidor');
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        }); });
+        // Procesar evento de juego
+        socket.on('gameEvent', function (data) { return __awaiter(void 0, void 0, void 0, function () {
+            var sessionId, event_1, roomName, rooms, gameState, isCorrect;
+            var _a;
+            return __generator(this, function (_b) {
+                try {
+                    sessionId = data.sessionId, event_1 = data.event;
+                    if (!sessionId || !event_1) {
+                        socket.emit('gameError', 'Datos de evento de juego requeridos');
+                        return [2 /*return*/];
+                    }
+                    roomName = "game-".concat(sessionId);
+                    rooms = Array.from(socket.rooms);
+                    if (!rooms.includes(roomName)) {
+                        socket.emit('gameError', 'No estás en esta sesión de juego');
+                        return [2 /*return*/];
+                    }
+                    // Agregar información del evento
+                    event_1.sessionId = sessionId;
+                    event_1.timestamp = Date.now();
+                    console.log("\uD83C\uDFAE Evento de juego recibido: ".concat(event_1.type, " en sesi\u00F3n ").concat(sessionId));
+                    // Manejar eventos específicos del juego
+                    switch (event_1.type) {
+                        case 'gameStart':
+                            // Inicializar estado del juego
+                            activeGames.set(sessionId, {
+                                isPlaying: true,
+                                currentTurn: 'slp',
+                                score: { slp: 0, child: 0 },
+                                round: 1,
+                                maxRounds: 10,
+                                currentWord: event_1.data.currentWord,
+                                selectedAnswer: null,
+                                isCorrect: null,
+                                timeRemaining: 30,
+                                isPaused: false,
+                                participants: []
+                            });
+                            break;
+                        case 'answerSelected':
+                            gameState = activeGames.get(sessionId);
+                            if (gameState) {
+                                isCorrect = event_1.data.answer === ((_a = gameState.currentWord) === null || _a === void 0 ? void 0 : _a.word);
+                                gameState.isCorrect = isCorrect;
+                                gameState.selectedAnswer = event_1.data.answer;
+                                // Actualizar puntuación
+                                if (isCorrect) {
+                                    if (gameState.currentTurn === 'slp') {
+                                        gameState.score.slp += 10;
+                                    }
+                                    else {
+                                        gameState.score.child += 10;
+                                    }
+                                }
+                                // Cambiar turno
+                                gameState.currentTurn = gameState.currentTurn === 'slp' ? 'child' : 'slp';
+                                // Enviar estado actualizado
+                                io.to(roomName).emit('gameStateUpdate', gameState);
+                            }
+                            break;
+                        case 'gameEnd':
+                            // Finalizar juego
+                            activeGames.delete(sessionId);
+                            break;
+                    }
+                    // Reenviar evento a todos los participantes de la sala
+                    io.to(roomName).emit('gameEvent', event_1);
+                }
+                catch (error) {
+                    console.error('Error procesando evento de juego:', error);
+                    socket.emit('gameError', 'Error interno del servidor');
+                }
+                return [2 /*return*/];
+            });
+        }); });
+        // Solicitar estado del juego
+        socket.on('requestGameState', function (data) { return __awaiter(void 0, void 0, void 0, function () {
+            var sessionId, roomName, rooms, roomSockets, participants, error_5;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, verifySessionAccess(socket, sessionId)];
-                    case 1:
-                        hasAccess = _a.sent();
-                        if (!hasAccess) {
-                            socket.emit('error', { message: 'No tienes permisos para esta sesión' });
+                        sessionId = data.sessionId;
+                        if (!sessionId) {
+                            socket.emit('gameError', 'ID de sesión requerido');
                             return [2 /*return*/];
                         }
-                        // Unirse al room de la sesión
-                        socket.join("session:".concat(sessionId));
-                        socket.sessionId = sessionId;
-                        // Registrar conexión
-                        if (!sessionConnections.has(sessionId)) {
-                            sessionConnections.set(sessionId, new Set());
+                        roomName = "game-".concat(sessionId);
+                        rooms = Array.from(socket.rooms);
+                        if (!rooms.includes(roomName)) {
+                            socket.emit('gameError', 'No estás en esta sesión de juego');
+                            return [2 /*return*/];
                         }
-                        sessionConnections.get(sessionId).add(socket.userId);
-                        // Notificar a otros participantes
-                        socket.to("session:".concat(sessionId)).emit('user-joined', {
-                            userId: socket.userId,
-                            userRole: socket.userRole,
-                            timestamp: new Date().toISOString()
+                        return [4 /*yield*/, io.in(roomName).fetchSockets()];
+                    case 1:
+                        roomSockets = _a.sent();
+                        participants = roomSockets.map(function (s) { return ({
+                            userId: s.userId,
+                            name: 'Usuario', // TODO: Obtener nombre real del usuario
+                            role: s.userRole || 'child',
+                            isConnected: true,
+                            score: 0
+                        }); });
+                        // Enviar estado actual
+                        socket.emit('gameStateUpdate', {
+                            isPlaying: false,
+                            currentTurn: 'slp',
+                            score: { slp: 0, child: 0 },
+                            round: 1,
+                            maxRounds: 10,
+                            currentWord: null,
+                            selectedAnswer: null,
+                            isCorrect: null,
+                            timeRemaining: 30,
+                            isPaused: false,
+                            participants: participants
                         });
-                        gameState = activeGames.get(sessionId);
-                        if (gameState) {
-                            socket.emit('game-state', gameState);
-                        }
-                        console.log("\uD83D\uDC65 Usuario ".concat(socket.userId, " se uni\u00F3 a la sesi\u00F3n ").concat(sessionId));
                         return [3 /*break*/, 3];
                     case 2:
-                        error_3 = _a.sent();
-                        socket.emit('error', { message: 'Error al unirse a la sesión' });
+                        error_5 = _a.sent();
+                        console.error('Error obteniendo estado del juego:', error_5);
+                        socket.emit('gameError', 'Error interno del servidor');
                         return [3 /*break*/, 3];
                     case 3: return [2 /*return*/];
                 }
             });
         }); });
-        // Salir de sesión
-        socket.on('leave-session', function (sessionId) {
-            socket.leave("session:".concat(sessionId));
-            // Remover de conexiones
-            var connections = sessionConnections.get(sessionId);
-            if (connections) {
-                connections.delete(socket.userId);
+        // Desconexión
+        socket.on('disconnect', function () {
+            console.log("\uD83D\uDD0C Usuario desconectado: ".concat(socket.userId, ", raz\u00F3n: ").concat(socket.disconnected ? 'desconectado' : 'desconectado por servidor'));
+            // Limpiar conexiones de sesión
+            for (var _i = 0, _a = Array.from(sessionConnections.entries()); _i < _a.length; _i++) {
+                var _b = _a[_i], sessionId = _b[0], connections = _b[1];
+                connections.delete(socket.id);
                 if (connections.size === 0) {
                     sessionConnections.delete(sessionId);
                 }
             }
-            // Notificar a otros participantes
-            socket.to("session:".concat(sessionId)).emit('user-left', {
-                userId: socket.userId,
-                userRole: socket.userRole,
-                timestamp: new Date().toISOString()
-            });
-            console.log("\uD83D\uDC4B Usuario ".concat(socket.userId, " sali\u00F3 de la sesi\u00F3n ").concat(sessionId));
-        });
-        // Iniciar juego
-        socket.on('start-game', function (data) { return __awaiter(void 0, void 0, void 0, function () {
-            var hasAccess, gameState, error_4;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, verifySessionAccess(socket, data.sessionId)];
-                    case 1:
-                        hasAccess = _a.sent();
-                        if (!hasAccess || socket.userRole !== 'slp') {
-                            socket.emit('error', { message: 'No tienes permisos para iniciar el juego' });
-                            return [2 /*return*/];
-                        }
-                        gameState = {
-                            sessionId: data.sessionId,
-                            gameType: data.gameType,
-                            currentLevel: data.level,
-                            score: 0,
-                            accuracy: 0,
-                            timeRemaining: 300, // 5 minutos
-                            isActive: true
-                        };
-                        activeGames.set(data.sessionId, gameState);
-                        // Notificar a todos los participantes
-                        io.to("session:".concat(data.sessionId)).emit('game-started', gameState);
-                        console.log("\uD83C\uDFAE Juego iniciado en sesi\u00F3n ".concat(data.sessionId, ": ").concat(data.gameType));
-                        return [3 /*break*/, 3];
-                    case 2:
-                        error_4 = _a.sent();
-                        socket.emit('error', { message: 'Error al iniciar el juego' });
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
-                }
-            });
-        }); });
-        // Acción de juego
-        socket.on('game-action', function (action) {
-            var gameState = activeGames.get(socket.sessionId);
-            if (!gameState || !gameState.isActive) {
-                socket.emit('error', { message: 'No hay juego activo' });
-                return;
-            }
-            // Procesar acción según el tipo
-            switch (action.type) {
-                case 'correct-answer':
-                    gameState.score += 10;
-                    gameState.accuracy = ((gameState.accuracy * 0.9) + 100) / 2;
-                    break;
-                case 'incorrect-answer':
-                    gameState.accuracy = ((gameState.accuracy * 0.9) + 0) / 2;
-                    break;
-                case 'level-complete':
-                    gameState.currentLevel++;
-                    gameState.score += 50;
-                    break;
-                case 'time-update':
-                    gameState.timeRemaining = action.data.timeRemaining;
-                    break;
-            }
-            // Sincronizar con todos los participantes
-            io.to("session:".concat(socket.sessionId)).emit('game-update', {
-                action: action,
-                gameState: gameState,
-                timestamp: new Date().toISOString()
-            });
-            console.log("\uD83C\uDFAF Acci\u00F3n de juego: ".concat(action.type, " en sesi\u00F3n ").concat(socket.sessionId));
-        });
-        // Finalizar juego
-        socket.on('end-game', function (data) { return __awaiter(void 0, void 0, void 0, function () {
-            var hasAccess, gameState, error_5;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 4, , 5]);
-                        return [4 /*yield*/, verifySessionAccess(socket, data.sessionId)];
-                    case 1:
-                        hasAccess = _a.sent();
-                        if (!hasAccess || socket.userRole !== 'slp') {
-                            socket.emit('error', { message: 'No tienes permisos para finalizar el juego' });
-                            return [2 /*return*/];
-                        }
-                        gameState = activeGames.get(data.sessionId);
-                        if (!gameState) return [3 /*break*/, 3];
-                        gameState.isActive = false;
-                        gameState.score = data.finalScore;
-                        gameState.accuracy = data.finalAccuracy;
-                        // Actualizar sesión en la base de datos
-                        return [4 /*yield*/, TherapySession_1.TherapySession.findByIdAndUpdate(data.sessionId, {
-                                $inc: {
-                                    gamesPlayed: 1,
-                                    totalScore: data.finalScore
-                                },
-                                $set: {
-                                    lastGameAccuracy: data.finalAccuracy,
-                                    lastGameDate: new Date()
-                                }
-                            })];
-                    case 2:
-                        // Actualizar sesión en la base de datos
-                        _a.sent();
-                        // Notificar a todos los participantes
-                        io.to("session:".concat(data.sessionId)).emit('game-ended', {
-                            finalScore: data.finalScore,
-                            finalAccuracy: data.finalAccuracy,
-                            timestamp: new Date().toISOString()
-                        });
-                        // Limpiar estado del juego después de un tiempo
-                        setTimeout(function () {
-                            activeGames.delete(data.sessionId);
-                        }, 60000); // 1 minuto
-                        console.log("\uD83C\uDFC1 Juego finalizado en sesi\u00F3n ".concat(data.sessionId));
-                        _a.label = 3;
-                    case 3: return [3 /*break*/, 5];
-                    case 4:
-                        error_5 = _a.sent();
-                        socket.emit('error', { message: 'Error al finalizar el juego' });
-                        return [3 /*break*/, 5];
-                    case 5: return [2 /*return*/];
-                }
-            });
-        }); });
-        // Chat en tiempo real
-        socket.on('chat-message', function (data) {
-            var message = {
-                userId: socket.userId,
-                userRole: socket.userRole,
-                message: data.message,
-                type: data.type,
-                timestamp: new Date().toISOString()
-            };
-            // Enviar a todos los participantes de la sesión
-            io.to("session:".concat(data.sessionId)).emit('chat-message', message);
-            console.log("\uD83D\uDCAC Mensaje de chat en sesi\u00F3n ".concat(data.sessionId, ": ").concat(data.message));
-        });
-        // Notificaciones de estado de sesión
-        socket.on('session-status', function (data) {
-            if (socket.userRole !== 'slp') {
-                socket.emit('error', { message: 'Solo los SLP pueden cambiar el estado de la sesión' });
-                return;
-            }
-            var statusUpdate = {
-                status: data.status,
-                notes: data.notes,
-                updatedBy: socket.userId,
-                timestamp: new Date().toISOString()
-            };
-            // Enviar a todos los participantes
-            io.to("session:".concat(data.sessionId)).emit('session-status-update', statusUpdate);
-            console.log("\uD83D\uDCCA Estado de sesi\u00F3n actualizado: ".concat(data.status, " en sesi\u00F3n ").concat(data.sessionId));
-        });
-        // Ping para mantener conexión
-        socket.on('ping', function () {
-            socket.emit('pong', { timestamp: new Date().toISOString() });
-        });
-        // Desconexión
-        socket.on('disconnect', function () {
-            console.log("\uD83D\uDD0C Usuario desconectado: ".concat(socket.userId));
-            // Limpiar conexiones si el usuario estaba en una sesión
-            if (socket.sessionId) {
-                var connections = sessionConnections.get(socket.sessionId);
-                if (connections) {
-                    connections.delete(socket.userId);
-                    if (connections.size === 0) {
-                        sessionConnections.delete(socket.sessionId);
-                    }
-                }
-                // Notificar a otros participantes
-                socket.to("session:".concat(socket.sessionId)).emit('user-disconnected', {
-                    userId: socket.userId,
-                    userRole: socket.userRole,
-                    timestamp: new Date().toISOString()
-                });
-            }
         });
     });
-    // Función para obtener estadísticas de conexiones
-    var getConnectionStats = function () {
-        return {
-            totalConnections: io.engine.clientsCount,
-            activeSessions: sessionConnections.size,
-            activeGames: activeGames.size,
-            sessionConnections: Object.fromEntries(Array.from(sessionConnections.entries()).map(function (_a) {
-                var sessionId = _a[0], connections = _a[1];
-                return [
-                    sessionId,
-                    connections.size
-                ];
-            }))
-        };
-    };
-    // Endpoint para obtener estadísticas (solo para desarrollo)
-    if (process.env['NODE_ENV'] === 'development') {
-        io.on('get-stats', function () {
-            io.emit('connection-stats', getConnectionStats());
-        });
-    }
     console.log('🔌 WebSocket handlers configurados');
 };
 exports.setupSocketHandlers = setupSocketHandlers;

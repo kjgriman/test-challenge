@@ -9,7 +9,10 @@ import {
   endVideoRoom,
   leaveVideoRoom,
   deleteVideoRoom,
-  updateVideoRoomSettings
+  updateVideoRoomSettings,
+  inviteToVideoRoom,
+  acceptVideoRoomInvitation,
+  joinPublicVideoRoom
 } from '../controllers/videoRoomController';
 
 const router = express.Router();
@@ -43,5 +46,14 @@ router.delete('/:roomId', deleteVideoRoom);
 
 // Actualizar configuración de la sala
 router.put('/:roomId/settings', updateVideoRoomSettings);
+
+// Invitar usuario a sala de video
+router.post('/:roomId/invite', inviteToVideoRoom);
+
+// Aceptar invitación a sala de video
+router.post('/:roomId/accept-invitation', acceptVideoRoomInvitation);
+
+// Unirse a sala pública por código
+router.post('/:roomId/join-public', joinPublicVideoRoom);
 
 export default router;

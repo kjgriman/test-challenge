@@ -23,7 +23,17 @@ export interface IVideoRoom extends Document {
     allowChat: boolean;
     allowRecording: boolean;
     requireApproval: boolean;
+    isPublic: boolean;
+    allowGuests: boolean;
   };
+  invitations: Array<{
+    userId: mongoose.Types.ObjectId;
+    email: string;
+    role: 'slp' | 'child' | 'guest';
+    invitedAt: Date;
+    status: 'pending' | 'accepted' | 'declined';
+    acceptedAt?: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -115,8 +125,44 @@ const videoRoomSchema = new Schema<IVideoRoom>({
     requireApproval: {
       type: Boolean,
       default: false
+    },
+    isPublic: {
+      type: Boolean,
+      default: true
+    },
+    allowGuests: {
+      type: Boolean,
+      default: true
     }
-  }
+  },
+  invitations: [{
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    email: {
+      type: String,
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['slp', 'child', 'guest'],
+      default: 'guest'
+    },
+    invitedAt: {
+      type: Date,
+      default: Date.now
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'declined'],
+      default: 'pending'
+    },
+    acceptedAt: {
+      type: Date
+    }
+  }]
 }, {
   timestamps: true,
   toJSON: {

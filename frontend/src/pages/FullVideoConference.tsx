@@ -94,7 +94,7 @@ const FullVideoConference: React.FC = () => {
     }
 
     // Usar HTTP para desarrollo local
-    const serverUrl = "https://test-challenge-production.up.railway.app/api";
+    const serverUrl = import.meta.env.VITE_API_URL;
 
     const newSocket = io(serverUrl, {
       auth: {

@@ -77,14 +77,31 @@ export interface ChildRegistrationData {
 
 // API base URL - Usar proxy de Vite en desarrollo
 // Si VITE_API_URL no está definida, usar cadena vacía para proxy
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// Configuración HTTPS completa: Frontend y Backend HTTPS
+const getApiBaseUrl = () => {
+  // Si hay una variable de entorno específica, usarla
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // En desarrollo, usar HTTPS para ambos (requerido para WebRTC)
+  if (import.meta.env.DEV) {
+    return 'https://localhost:3001';
+  }
+  
+  // En producción, usar la URL por defecto
+  return '';
+};
 
+const API_BASE_URL = getApiBaseUrl();
 
 // Debug: Verificar la configuración del API
 console.log('🔧 API Configuration:', {
   VITE_API_URL: import.meta.env.VITE_API_URL,
   API_BASE_URL,
-  isDevelopment: import.meta.env.DEV
+  isDevelopment: import.meta.env.DEV,
+  currentProtocol: window.location.protocol,
+  currentHost: window.location.host
 });
 
 // Función para hacer requests a la API

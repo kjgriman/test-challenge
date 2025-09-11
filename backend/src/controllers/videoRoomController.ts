@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { VideoRoom } from '../models/VideoRoom';
 import { sendSuccessResponse, sendErrorResponse } from '../utils/responseUtils';
 import { asyncErrorHandler } from '../middleware/asyncErrorHandler';
+import { OperationalError } from '../middleware/errorHandler';
 
 // Crear una nueva sala de video
 export const createVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
@@ -35,7 +37,9 @@ export const createVideoRoom = asyncErrorHandler(async (req: Request, res: Respo
       allowScreenShare: settings?.allowScreenShare ?? true,
       allowChat: settings?.allowChat ?? true,
       allowRecording: settings?.allowRecording ?? false,
-      requireApproval: settings?.requireApproval ?? false
+      requireApproval: settings?.requireApproval ?? false,
+      isPublic: settings?.isPublic ?? true,
+      allowGuests: settings?.allowGuests ?? true
     }
   });
 
@@ -55,14 +59,49 @@ export const createVideoRoom = asyncErrorHandler(async (req: Request, res: Respo
 // Obtener todas las salas de video del usuario
 export const getVideoRooms = asyncErrorHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user.id;
-  const { page = 1, limit = 10, status } = req.query;
+  const { page = 1, limit = 10, status, type = 'all' } = req.query;
 
-  const query: any = {
-    $or: [
-      { createdBy: userId },
-      { 'participants.userId': userId }
-    ]
-  };
+  let query: any = {};
+
+  if (type === 'my') {
+    // Solo salas del usuario (creadas por él o donde participa)
+    query = {
+      $or: [
+        { createdBy: userId },
+        { 'participants.userId': userId }
+      ]
+    };
+  } else if (type === 'public') {
+    // Solo salas públicas creadas por otros usuarios
+    query = {
+      'settings.isPublic': true,
+      createdBy: { $ne: userId },
+      'participants.userId': { $ne: userId }
+    };
+  } else if (type === 'invited') {
+    // Salas donde el usuario fue invitado
+    query = {
+      'invitations.userId': userId,
+      'invitations.status': 'pending'
+    };
+  } else {
+    // Todas las salas (mis salas + salas públicas + invitaciones)
+    query = {
+      $or: [
+        { createdBy: userId },
+        { 'participants.userId': userId },
+        { 
+          'settings.isPublic': true,
+          createdBy: { $ne: userId },
+          'participants.userId': { $ne: userId }
+        },
+        {
+          'invitations.userId': userId,
+          'invitations.status': 'pending'
+        }
+      ]
+    };
+  }
 
   if (status === 'active') {
     query.isActive = true;
@@ -74,8 +113,9 @@ export const getVideoRooms = asyncErrorHandler(async (req: Request, res: Respons
 
   const [videoRooms, total] = await Promise.all([
     VideoRoom.find(query)
-      .populate('createdBy', 'firstName lastName')
-      .populate('participants.userId', 'firstName lastName')
+      .populate('createdBy', 'firstName lastName email')
+      .populate('participants.userId', 'firstName lastName email')
+      .populate('invitations.userId', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit)),
@@ -271,6 +311,164 @@ export const deleteVideoRoom = asyncErrorHandler(async (req: Request, res: Respo
   await VideoRoom.deleteOne({ roomId });
 
   return sendSuccessResponse(res, {}, 'Sala eliminada exitosamente');
+});
+
+// Invitar usuario a sala de video
+export const inviteToVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+  const { email, role = 'guest' } = req.body;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+  if (!videoRoom) {
+    throw new OperationalError('Sala de video no encontrada', 404);
+  }
+
+  if (videoRoom.createdBy.toString() !== userId) {
+    throw new OperationalError('No tienes permisos para invitar usuarios a esta sala', 403);
+  }
+
+  // Buscar usuario por email
+  const User = mongoose.model('User');
+  const invitedUser = await User.findOne({ email });
+  if (!invitedUser) {
+    throw new OperationalError('Usuario no encontrado', 404);
+  }
+
+  // Verificar si ya está invitado
+  const existingInvitation = videoRoom.invitations.find(
+    inv => inv.userId.toString() === invitedUser._id.toString()
+  );
+
+  if (existingInvitation) {
+    throw new OperationalError('El usuario ya está invitado a esta sala', 400);
+  }
+
+  // Verificar si ya es participante
+  const existingParticipant = videoRoom.participants.find(
+    p => p.userId.toString() === invitedUser._id.toString()
+  );
+
+  if (existingParticipant) {
+    throw new OperationalError('El usuario ya es participante de esta sala', 400);
+  }
+
+  // Agregar invitación
+  videoRoom.invitations.push({
+    userId: invitedUser._id,
+    email: invitedUser.email,
+    role,
+    invitedAt: new Date(),
+    status: 'pending'
+  });
+
+  await videoRoom.save();
+
+  return sendSuccessResponse(res, { 
+    invitation: {
+      userId: invitedUser._id,
+      email: invitedUser.email,
+      role,
+      invitedAt: new Date(),
+      status: 'pending'
+    }
+  }, 'Invitación enviada exitosamente');
+});
+
+// Aceptar invitación a sala de video
+export const acceptVideoRoomInvitation = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+  if (!videoRoom) {
+    throw new OperationalError('Sala de video no encontrada', 404);
+  }
+
+  // Buscar invitación pendiente
+  const invitation = videoRoom.invitations.find(
+    inv => inv.userId.toString() === userId && inv.status === 'pending'
+  );
+
+  if (!invitation) {
+    throw new OperationalError('No tienes una invitación pendiente para esta sala', 404);
+  }
+
+  // Verificar si ya es participante
+  const existingParticipant = videoRoom.participants.find(
+    p => p.userId.toString() === userId
+  );
+
+  if (existingParticipant) {
+    throw new OperationalError('Ya eres participante de esta sala', 400);
+  }
+
+  // Agregar como participante
+  videoRoom.participants.push({
+    userId: userId,
+    name: `${(req as any).user.firstName} ${(req as any).user.lastName}`,
+    role: invitation.role,
+    joinedAt: new Date(),
+    isActive: true,
+    isMuted: false,
+    isVideoOff: false
+  });
+
+  // Marcar invitación como aceptada
+  invitation.status = 'accepted';
+  invitation.acceptedAt = new Date();
+
+  await videoRoom.save();
+
+  return sendSuccessResponse(res, { videoRoom }, 'Invitación aceptada exitosamente');
+});
+
+// Unirse a sala pública por código
+export const joinPublicVideoRoom = asyncErrorHandler(async (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const userId = (req as any).user.id;
+
+  const videoRoom = await VideoRoom.findOne({ roomId });
+  if (!videoRoom) {
+    throw new OperationalError('Sala de video no encontrada', 404);
+  }
+
+  if (!videoRoom.settings.isPublic) {
+    throw new OperationalError('Esta sala no es pública', 403);
+  }
+
+  if (!videoRoom.settings.allowGuests) {
+    throw new OperationalError('Esta sala no permite invitados', 403);
+  }
+
+  // Verificar si ya es participante
+  const existingParticipant = videoRoom.participants.find(
+    p => p.userId.toString() === userId
+  );
+
+  if (existingParticipant) {
+    throw new OperationalError('Ya eres participante de esta sala', 400);
+  }
+
+  // Verificar límite de participantes
+  if (videoRoom.participants.length >= videoRoom.maxParticipants) {
+    throw new OperationalError('La sala está llena', 400);
+  }
+
+  // Agregar como participante
+  videoRoom.participants.push({
+    userId: userId,
+    name: `${(req as any).user.firstName} ${(req as any).user.lastName}`,
+    role: 'guest',
+    joinedAt: new Date(),
+    isActive: true,
+    isMuted: false,
+    isVideoOff: false
+  });
+
+  await videoRoom.save();
+
+  return sendSuccessResponse(res, { videoRoom }, 'Te has unido a la sala exitosamente');
 });
 
 // Actualizar configuración de la sala

@@ -23,15 +23,19 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    // Usar HTTP para desarrollo local
+    https: {
+      key: '../certs/key.pem',
+      cert: '../certs/cert.pem',
+    },
+    // Usar HTTPS para desarrollo local (requerido para WebRTC)
     proxy: {
       "/api": {
-        target: process.env.VITE_API_URL || "http://localhost:3001",
+        target: process.env.VITE_API_URL || "https://localhost:3001",
         changeOrigin: true,
         secure: false,
       },
       "/socket.io": {
-        target: process.env.VITE_API_URL || "http://localhost:3001",
+        target: process.env.VITE_API_URL || "https://localhost:3001",
         changeOrigin: true,
         ws: true,
       },

@@ -85,15 +85,12 @@ const Games: React.FC = () => {
 
   // Cargar juegos disponibles
   const loadGames = async () => {
-    if (!token) return;
-
     try {
       setLoading(true);
       setError(null);
 
       const response = await fetch(`${BACKEND_URL}/games`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -114,7 +111,10 @@ const Games: React.FC = () => {
 
   // Cargar progreso del usuario
   const loadProgress = async () => {
-    if (!token) return;
+    if (!token) {
+      console.log('❌ No hay token para cargar progreso');
+      return;
+    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/games/progress`, {
@@ -135,7 +135,10 @@ const Games: React.FC = () => {
 
   // Cargar logros del usuario
   const loadAchievements = async () => {
-    if (!token) return;
+    if (!token) {
+      console.log('❌ No hay token para cargar logros');
+      return;
+    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/games/achievements`, {

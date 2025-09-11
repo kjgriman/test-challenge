@@ -186,46 +186,46 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRole }) => {
           href: '/video-rooms',
           icon: Video,
         },
-        {
-          name: 'Unirse por Código',
-          href: '/join-room',
-          icon: Video,
-        },
-        {
-          name: 'Diagnóstico WebRTC',
-          href: '/webrtc-diagnostics',
-          icon: Settings,
-        },
-        {
-          name: 'Prueba WebRTC',
-          href: '/webrtc-test',
-          icon: Video,
-        },
-        {
-          name: 'Prueba Simple',
-          href: '/webrtc-simple',
-          icon: Camera,
-        },
-        {
-          name: 'Prueba PeerJS',
-          href: '/peerjs-test',
-          icon: Camera,
-        },
-        {
-          name: 'Diagnóstico HTTPS',
-          href: '/https-diagnostics',
-          icon: Camera,
-        },
-        {
-          name: 'Videoconferencias',
-          href: '/video-conference',
-          icon: Camera,
-        },
-        {
-          name: 'Sistema Full',
-          href: '/full-video-conference',
-          icon: Camera,
-        },
+        // {
+        //   name: 'Unirse por Código',
+        //   href: '/join-room',
+        //   icon: Video,
+        // },
+        // {
+        //   name: 'Diagnóstico WebRTC',
+        //   href: '/webrtc-diagnostics',
+        //   icon: Settings,
+        // },
+        // {
+        //   name: 'Prueba WebRTC',
+        //   href: '/webrtc-test',
+        //   icon: Video,
+        // },
+        // {
+        //   name: 'Prueba Simple',
+        //   href: '/webrtc-simple',
+        //   icon: Camera,
+        // },
+        // {
+        //   name: 'Prueba PeerJS',
+        //   href: '/peerjs-test',
+        //   icon: Camera,
+        // },
+        // {
+        //   name: 'Diagnóstico HTTPS',
+        //   href: '/https-diagnostics',
+        //   icon: Camera,
+        // },
+        // {
+        //   name: 'Videoconferencias',
+        //   href: '/video-conference',
+        //   icon: Camera,
+        // },
+        // {
+        //   name: 'Sistema Full',
+        //   href: '/full-video-conference',
+        //   icon: Camera,
+        // },
       ],
     },
     // Sección de comunicación oculta - las notificaciones están disponibles en el header

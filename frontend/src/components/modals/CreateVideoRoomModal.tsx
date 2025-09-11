@@ -50,7 +50,8 @@ const CreateVideoRoomModal: React.FC<CreateVideoRoomModalProps> = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `https://test-challenge-production.up.railway.app/api/video-rooms`,
+        // `https://test-challenge-production.up.railway.app/api/video-rooms`,
+        `${import.meta.env.VITE_API_URL}/video-rooms`,
         {
           method: "POST",
           headers: {

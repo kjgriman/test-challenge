@@ -16,7 +16,10 @@ import {
   MoreVertical,
   RefreshCw,
   User,
-  Eye
+  Eye,
+  UserPlus,
+  LogIn,
+  Check
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -26,6 +29,8 @@ import VideoCall from '../components/video/VideoCall';
 import CreateVideoRoomModal from '../components/modals/CreateVideoRoomModal';
 import { toast } from 'react-hot-toast';
 import VideoRoomCall from '../components/video/VideoRoomCall';
+import PeerJSVideoCall from '../components/video/PeerJSVideoCall';
+import LocalVideoCall from '../components/video/LocalVideoCall';
 
 interface VideoSession {
   _id: string;
@@ -95,14 +100,28 @@ interface VideoRoom {
     allowChat: boolean;
     allowRecording: boolean;
     requireApproval: boolean;
+    isPublic: boolean;
+    allowGuests: boolean;
   };
+  invitations?: Array<{
+    userId: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    };
+    email: string;
+    role: 'slp' | 'child' | 'guest';
+    invitedAt: string;
+    status: 'pending' | 'accepted' | 'declined';
+    acceptedAt?: string;
+  }>;
   shareLink: string;
   createdAt: string;
   updatedAt: string;
 }
 
 const VideoRooms: React.FC = () => {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [sessions, setSessions] = useState<VideoSession[]>([]);
   const [videoRooms, setVideoRooms] = useState<VideoRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +129,8 @@ const VideoRooms: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState<'sessions' | 'rooms'>('rooms');
+  const [roomTypeFilter, setRoomTypeFilter] = useState<'all' | 'my' | 'public' | 'invited'>('all');
+  
   // Estado para modales
   const [videoCallModal, setVideoCallModal] = useState<{
     isOpen: boolean;
@@ -117,12 +138,14 @@ const VideoRooms: React.FC = () => {
     roomId?: string | null;
   }>({ isOpen: false, sessionId: null, roomId: null });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedRoomForInvite, setSelectedRoomForInvite] = useState<string | null>(null);
 
   // Cargar sesiones con video
   const loadVideoSessions = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/sessions`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/sessions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -149,9 +172,9 @@ const VideoRooms: React.FC = () => {
   };
 
   // Cargar salas de video independientes
-  const loadVideoRooms = async () => {
+  const loadVideoRooms = async (type: 'all' | 'my' | 'public' | 'invited' = 'all') => {
     try {
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/video-rooms`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms?type=${type}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -163,7 +186,18 @@ const VideoRooms: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('xxxxxxxxxxxxxxx', data.data.videoRooms);
+      console.log('📹 Salas de video cargadas:', {
+        type,
+        count: data.data.videoRooms.length,
+        rooms: data.data.videoRooms.map((room: any) => ({
+          id: room.roomId,
+          name: room.name,
+          isPublic: room.settings?.isPublic,
+          allowGuests: room.settings?.allowGuests,
+          createdBy: room.createdBy?.firstName + ' ' + room.createdBy?.lastName,
+          participants: room.participants?.length || 0
+        }))
+      });
       
       setVideoRooms(data.data.videoRooms);
     } catch (err) {
@@ -174,13 +208,38 @@ const VideoRooms: React.FC = () => {
 
   useEffect(() => {
     loadVideoSessions();
-    loadVideoRooms();
-  }, [token]);
+    loadVideoRooms(roomTypeFilter);
+  }, [token, roomTypeFilter]);
+
+  // Manejar unirse a sala desde URL
+  useEffect(() => {
+    const handleJoinFromUrl = async () => {
+      const path = window.location.pathname;
+      const joinMatch = path.match(/\/video-rooms\/join\/([A-Z0-9]+)/);
+      
+      if (joinMatch) {
+        const roomId = joinMatch[1];
+        console.log('🔗 Uniéndose a sala desde URL:', roomId);
+        
+        try {
+          await joinPublicRoom(roomId);
+          // Redirigir a la página principal después de unirse
+          window.history.replaceState({}, '', '/video-rooms');
+        } catch (error) {
+          console.error('Error al unirse desde URL:', error);
+          // Redirigir a la página principal incluso si hay error
+          window.history.replaceState({}, '', '/video-rooms');
+        }
+      }
+    };
+
+    handleJoinFromUrl();
+  }, []);
 
   // Unirse a una sala de video independiente
   const joinVideoRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/video-rooms/${roomId}/join`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -227,10 +286,104 @@ const VideoRooms: React.FC = () => {
     toast.success('Enlace copiado al portapapeles');
   };
 
+  // Unirse a sala pública
+  const joinPublicRoom = async (roomId: string) => {
+    try {
+      console.log('🔗 Intentando unirse a sala pública:', roomId);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/join-public`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ Error del servidor:', errorData);
+        throw new Error(errorData.error?.message || 'Error al unirse a la sala');
+      }
+
+      const data = await response.json();
+      console.log('✅ Datos de respuesta:', data);
+      toast.success('Te has unido a la sala exitosamente');
+      
+      // Recargar salas para mostrar la nueva participación
+      loadVideoRooms('all');
+      
+      return data.data.videoRoom;
+    } catch (err: any) {
+      console.error('❌ Error al unirse a la sala:', err);
+      toast.error(err.message || 'Error al unirse a la sala');
+      throw err;
+    }
+  };
+
+  // Invitar usuario a sala
+  const inviteUserToRoom = async (roomId: string, email: string, role: 'slp' | 'child' | 'guest' = 'guest') => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/invite`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, role })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Error al enviar invitación');
+      }
+
+      const data = await response.json();
+      toast.success(`Invitación enviada a ${email}`);
+      
+      return data.data.invitation;
+    } catch (err: any) {
+      console.error('Error al enviar invitación:', err);
+      toast.error(err.message || 'Error al enviar invitación');
+      throw err;
+    }
+  };
+
+  // Aceptar invitación
+  const acceptInvitation = async (roomId: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/accept-invitation`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Error al aceptar invitación');
+      }
+
+      const data = await response.json();
+      toast.success('Invitación aceptada exitosamente');
+      
+      // Recargar salas
+      loadVideoRooms('all');
+      
+      return data.data.videoRoom;
+    } catch (err: any) {
+      console.error('Error al aceptar invitación:', err);
+      toast.error(err.message || 'Error al aceptar invitación');
+      throw err;
+    }
+  };
+
   // Iniciar sala de video
   const startVideoRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/video-rooms/${roomId}/start`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -252,7 +405,7 @@ const VideoRooms: React.FC = () => {
   // Finalizar sala de video
   const endVideoRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/video-rooms/${roomId}/end`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video-rooms/${roomId}/end`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -274,7 +427,7 @@ const VideoRooms: React.FC = () => {
   // Iniciar video para una sesión
   const startVideoSession = async (sessionId: string) => {
     try {
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/video/sessions/${sessionId}/start-video`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video/sessions/${sessionId}/start-video`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -296,7 +449,7 @@ const VideoRooms: React.FC = () => {
   // Finalizar video para una sesión
   const endVideoSession = async (sessionId: string) => {
     try {
-      const response = await fetch(`https://test-challenge-production.up.railway.app/api/video/sessions/${sessionId}/end-video`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/video/sessions/${sessionId}/end-video`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -445,6 +598,19 @@ const VideoRooms: React.FC = () => {
           <option value="completed">Completadas</option>
           <option value="cancelled">Canceladas</option>
         </select>
+        
+        {activeTab === 'rooms' && (
+          <select
+            value={roomTypeFilter}
+            onChange={(e) => setRoomTypeFilter(e.target.value as 'all' | 'my' | 'public' | 'invited')}
+            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">Todas las salas</option>
+            <option value="my">Mis salas</option>
+            <option value="public">Salas públicas</option>
+            <option value="invited">Invitaciones</option>
+          </select>
+        )}
         <Button onClick={loadVideoSessions} variant="outline">
           <RefreshCw className="w-4 h-4 mr-2" />
           Actualizar
@@ -590,7 +756,8 @@ const VideoRooms: React.FC = () => {
                     </div>
 
                     {/* Acciones */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {/* Botón principal */}
                       {room.isActive ? (
                         <Button 
                           onClick={() => joinVideoRoom(room.roomId)}
@@ -611,23 +778,74 @@ const VideoRooms: React.FC = () => {
                         </Button>
                       )}
                       
-                      <Button 
-                        onClick={() => copyRoomLink(room.shareLink)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      
-                      {room.isActive && (
+                      {/* Botones secundarios */}
+                      <div className="flex gap-1">
+                        {/* Copiar enlace */}
                         <Button 
-                          onClick={() => endVideoRoom(room.roomId)}
-                          variant="destructive"
+                          onClick={() => copyRoomLink(room.shareLink)}
+                          variant="outline"
                           size="sm"
+                          title="Copiar enlace"
                         >
-                          <Square className="w-4 h-4" />
+                          <Copy className="w-4 h-4" />
                         </Button>
-                      )}
+                        
+                        {/* Invitar usuarios (solo para creadores) */}
+                        {room.createdBy.id === user?.id && (
+                          <Button 
+                            onClick={() => {
+                              setSelectedRoomForInvite(room.roomId);
+                              setShowInviteModal(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            title="Invitar usuarios"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Unirse a sala pública (solo si no es creador y no es participante) */}
+                        {room.createdBy.id !== user?.id && 
+                         room.settings.isPublic && 
+                         !room.participants.some(p => p.userId.id === user?.id) && (
+                          <Button 
+                            onClick={() => joinPublicRoom(room.roomId)}
+                            variant="outline"
+                            size="sm"
+                            title="Unirse a sala pública"
+                          >
+                            <LogIn className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Aceptar invitación */}
+                        {room.invitations?.some(inv => 
+                          inv.userId.id === user?.id && inv.status === 'pending'
+                        ) && (
+                          <Button 
+                            onClick={() => acceptInvitation(room.roomId)}
+                            variant="outline"
+                            size="sm"
+                            title="Aceptar invitación"
+                            className="text-green-600 border-green-600 hover:bg-green-50"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Terminar sala (solo para creadores) */}
+                        {room.createdBy.id === user?.id && room.isActive && (
+                          <Button 
+                            onClick={() => endVideoRoom(room.roomId)}
+                            variant="destructive"
+                            size="sm"
+                            title="Terminar sala"
+                          >
+                            <Square className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -881,7 +1099,7 @@ const VideoRooms: React.FC = () => {
 
       {/* Modal de video para sesiones */}
       {videoCallModal.sessionId && videoCallModal.isOpen && (
-        <VideoCall
+        <LocalVideoCall
           sessionId={videoCallModal?.sessionId}
           isOpen={videoCallModal.isOpen}
           onClose={() => closeVideoCall()}
@@ -891,7 +1109,7 @@ const VideoRooms: React.FC = () => {
       )}
       {/* Modal de video para salas independientes */}
       {videoCallModal.roomId && videoCallModal.isOpen && (
-        <VideoRoomCall
+        <LocalVideoCall
           roomId={videoCallModal.roomId}
           isOpen={videoCallModal.isOpen}
           onClose={() => closeVideoCall()}

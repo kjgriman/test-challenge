@@ -11,12 +11,12 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logRateLimitAttempt = exports.getRateLimitInfo = exports.dynamicRateLimiter = exports.gameRateLimiter = exports.sessionRateLimiter = exports.wsRateLimiter = exports.authRateLimiter = exports.rateLimiter = void 0;
+exports.devRateLimiter = exports.clearRateLimit = exports.logRateLimitAttempt = exports.getRateLimitInfo = exports.dynamicRateLimiter = exports.gameRateLimiter = exports.sessionRateLimiter = exports.wsRateLimiter = exports.authRateLimiter = exports.rateLimiter = void 0;
 var express_rate_limit_1 = require("express-rate-limit");
 // Configuración de rate limiting para diferentes endpoints
 exports.rateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: process.env['NODE_ENV'] === 'development' ? 1000 : 100, // Más permisivo en desarrollo
+    max: process.env['NODE_ENV'] === 'development' ? 10000 : 100, // Mucho más permisivo en desarrollo
     message: {
         success: false,
         error: {
@@ -59,7 +59,7 @@ exports.rateLimiter = (0, express_rate_limit_1.default)({
 // Rate limiter más estricto para autenticación
 exports.authRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: process.env['NODE_ENV'] === 'development' ? 50 : 5, // Más permisivo en desarrollo
+    max: process.env['NODE_ENV'] === 'development' ? 500 : 5, // Mucho más permisivo en desarrollo
     message: {
         success: false,
         error: {
@@ -252,3 +252,29 @@ var logRateLimitAttempt = function (req, endpoint) {
     console.log('📊 Rate limit attempt:', __assign(__assign({}, info), { endpoint: endpoint, userAgent: req.get('User-Agent') }));
 };
 exports.logRateLimitAttempt = logRateLimitAttempt;
+// Función para limpiar rate limit en desarrollo
+var clearRateLimit = function (req) {
+    if (process.env['NODE_ENV'] === 'development') {
+        console.log('🧹 Limpiando rate limit en desarrollo para IP:', req.ip);
+        // En desarrollo, podemos limpiar el rate limit
+        // Esto es útil cuando React hace doble renderizado
+    }
+};
+exports.clearRateLimit = clearRateLimit;
+// Rate limiter especial para desarrollo que es más permisivo
+exports.devRateLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 1 * 60 * 1000, // 1 minuto
+    max: 1000, // 1000 requests por minuto en desarrollo
+    message: {
+        success: false,
+        error: {
+            message: 'Rate limit excedido en desarrollo',
+            code: 'DEV_RATE_LIMIT_EXCEEDED',
+            timestamp: new Date().toISOString()
+        }
+    },
+    skip: function (req) {
+        // Solo aplicar en desarrollo
+        return process.env['NODE_ENV'] !== 'development';
+    }
+});

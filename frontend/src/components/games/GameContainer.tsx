@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import GameScore from './GameScore';
 import GameTimer from './GameTimer';
 import { GameManager, gameWords } from './GameData';
+import MultiplayerWordGame from './MultiplayerWordGame';
 
 interface GameContainerProps {
   sessionId: string;
@@ -19,6 +20,7 @@ interface GameData {
 }
 
 const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => {
+  const [showMultiplayerGame, setShowMultiplayerGame] = useState(false);
   const [gameState, setGameState] = useState({
     isPlaying: false,
     currentTurn: 'slp' as 'slp' | 'child',
@@ -155,13 +157,14 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-    >
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
+    <>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      >
+        <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
         {/* Header del juego */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-t-lg">
           <div className="flex items-center justify-between">
@@ -327,12 +330,20 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
                       Empareja las palabras con las imágenes correctas. Los
                       turnos alternan entre participantes.
                     </p>
-                    <button
-                      onClick={startGame}
-                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium"
-                    >
-                      Iniciar Juego
-                    </button>
+                    <div className="space-y-3">
+                      <button
+                        onClick={startGame}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium"
+                      >
+                        🎮 Juego Local
+                      </button>
+                      <button
+                        onClick={() => setShowMultiplayerGame(true)}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-medium"
+                      >
+                        🌐 Juego Multiplayer
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -402,6 +413,18 @@ const GameContainer: React.FC<GameContainerProps> = ({ sessionId, onClose }) => 
         </div>
       </div>
     </motion.div>
+
+    {showMultiplayerGame && (
+      <MultiplayerWordGame
+        sessionId={sessionId}
+        onClose={() => setShowMultiplayerGame(false)}
+        onGameEnd={(results) => {
+          console.log('Resultados del juego multiplayer:', results);
+          setShowMultiplayerGame(false);
+        }}
+      />
+    )}
+    </>
   );
 };
 

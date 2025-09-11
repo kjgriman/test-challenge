@@ -1,40 +1,40 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Importar componentes de layout
-import Layout from './components/layout/Layout';
+import Layout from './layout/Layout';
 
 // Importar hooks de autenticación
-import { useAuthStore, useIsAuthenticated, useIsInitialized } from './store/authStore';
+import { useAuthStore, useIsAuthenticated, useIsInitialized } from '../store/authStore';
 
 // Importar páginas (lazy loading para mejor performance)
-const LandingPage = React.lazy(() => import('./pages/Landing'));
-const LoginPage = React.lazy(() => import('./pages/Login'));
-const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPassword'));
-const ResetPasswordPage = React.lazy(() => import('./pages/ResetPassword'));
-const DashboardPage = React.lazy(() => import('./pages/Dashboard'));
-const SessionsPage = React.lazy(() => import('./pages/Sessions'));
-const SessionsActivePage = React.lazy(() => import('./pages/SessionsActive'));
-const SessionsScheduledPage = React.lazy(() => import('./pages/SessionsScheduled'));
-const SessionsHistoryPage = React.lazy(() => import('./pages/SessionsHistory'));
-const StudentsPage = React.lazy(() => import('./pages/Students'));
-const AddStudentPage = React.lazy(() => import('./pages/AddStudent'));
-const StudentEvaluationsPage = React.lazy(() => import('./pages/StudentEvaluations'));
-const WebRTCDiagnosticsPage = React.lazy(() => import('./pages/WebRTCDiagnostics'));
-const WebRTCTestPage = React.lazy(() => import('./pages/WebRTCTest'));
-const WebRTCTestSimplePage = React.lazy(() => import('./pages/WebRTCTestSimple'));
-const PeerJSTestPage = React.lazy(() => import('./pages/PeerJSTest'));
-const HTTPSDiagnosticsPage = React.lazy(() => import('./pages/HTTPSDiagnostics'));
-const VideoConferenceRoomPage = React.lazy(() => import('./pages/VideoConferenceRoom'));
-const FullVideoConferencePage = React.lazy(() => import('./pages/FullVideoConference'));
-const NotificationsPage = React.lazy(() => import('./pages/Notifications'));
-const GamesPage = React.lazy(() => import('./pages/Games'));
-const CreateGamePage = React.lazy(() => import('./pages/CreateGame'));
-const ReportsPage = React.lazy(() => import('./pages/Reports'));
-const ReportsProgressPage = React.lazy(() => import('./pages/ReportsProgress'));
-const ReportsSessionsPage = React.lazy(() => import('./pages/ReportsSessions'));
-const VideoRoomsPage = React.lazy(() => import('./pages/VideoRooms'));
+const LandingPage = React.lazy(() => import('../pages/Landing'));
+const LoginPage = React.lazy(() => import('../pages/Login'));
+const ForgotPasswordPage = React.lazy(() => import('../pages/ForgotPassword'));
+const ResetPasswordPage = React.lazy(() => import('../pages/ResetPassword'));
+const DashboardPage = React.lazy(() => import('../pages/Dashboard'));
+const SessionsPage = React.lazy(() => import('../pages/Sessions'));
+const SessionsActivePage = React.lazy(() => import('../pages/SessionsActive'));
+const SessionsScheduledPage = React.lazy(() => import('../pages/SessionsScheduled'));
+const SessionsHistoryPage = React.lazy(() => import('../pages/SessionsHistory'));
+const StudentsPage = React.lazy(() => import('../pages/Students'));
+const AddStudentPage = React.lazy(() => import('../pages/AddStudent'));
+const StudentEvaluationsPage = React.lazy(() => import('../pages/StudentEvaluations'));
+const WebRTCDiagnosticsPage = React.lazy(() => import('../pages/WebRTCDiagnostics'));
+const WebRTCTestPage = React.lazy(() => import('../pages/WebRTCTest'));
+const WebRTCTestSimplePage = React.lazy(() => import('../pages/WebRTCTestSimple'));
+const PeerJSTestPage = React.lazy(() => import('../pages/PeerJSTest'));
+const HTTPSDiagnosticsPage = React.lazy(() => import('../pages/HTTPSDiagnostics'));
+const VideoConferenceRoomPage = React.lazy(() => import('../pages/VideoConferenceRoom'));
+const FullVideoConferencePage = React.lazy(() => import('../pages/FullVideoConference'));
+const NotificationsPage = React.lazy(() => import('../pages/Notifications'));
+const GamesPage = React.lazy(() => import('../pages/Games'));
+const CreateGamePage = React.lazy(() => import('../pages/CreateGame'));
+const ReportsPage = React.lazy(() => import('../pages/Reports'));
+const ReportsProgressPage = React.lazy(() => import('../pages/ReportsProgress'));
+const ReportsSessionsPage = React.lazy(() => import('../pages/ReportsSessions'));
+const VideoRoomsPage = React.lazy(() => import('../pages/VideoRooms'));
 
 // Componente de carga
 const PageLoader = () => (

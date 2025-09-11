@@ -2,22 +2,15 @@ import { Server, Socket } from 'socket.io';
 import { TherapySession } from '../models/TherapySession';
 import { User } from '../models/User';
 import * as jwt from 'jsonwebtoken';
-import GameHandlers from './gameHandlers';
+import { GameState, GameParticipant } from '../types/gameTypes';
+
+// Usar el mismo JWT_SECRET que el middleware HTTP
+const JWT_SECRET = process.env['JWT_SECRET'] || 'your-secret-key';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   userRole?: string;
   sessionId?: string;
-}
-
-interface GameState {
-  sessionId: string;
-  gameType: string;
-  currentLevel: number;
-  score: number;
-  accuracy: number;
-  timeRemaining: number;
-  isActive: boolean;
 }
 
 interface GameAction {
@@ -35,17 +28,25 @@ const sessionConnections = new Map<string, Set<string>>();
 // Autenticar socket
 const authenticateSocket = async (socket: AuthenticatedSocket, token: string): Promise<boolean> => {
   try {
-    const decoded = jwt.verify(token, process.env['JWT_SECRET'] || 'your-secret-key') as any;
+    console.log('🔍 Autenticando socket con token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+    console.log('🔍 JWT_SECRET disponible:', JWT_SECRET ? 'SÍ' : 'NO');
+    
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    console.log('✅ Token decodificado:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
+    
     const user = await User.findById(decoded.userId);
     
     if (!user) {
+      console.log('❌ Usuario no encontrado en BD:', decoded.userId);
       return false;
     }
 
     socket.userId = (user._id as any).toString();
     socket.userRole = user.role;
+    console.log('✅ Socket autenticado:', { userId: socket.userId, role: socket.userRole });
     return true;
   } catch (error) {
+    console.log('❌ Error autenticando socket:', error);
     return false;
   }
 };
@@ -56,303 +57,267 @@ const verifySessionAccess = async (socket: AuthenticatedSocket, sessionId: strin
     const session = await TherapySession.findById(sessionId);
     if (!session) return false;
 
-    if (socket.userRole === 'slp') {
-      return session.slpId.toString() === socket.userId;
-    } else {
-      return session.childId.toString() === socket.userId;
-    }
+    // Verificar que el usuario sea parte de la sesión
+    return session.slpId.toString() === socket.userId || 
+           session.childId.toString() === socket.userId;
   } catch (error) {
+    console.error('Error verificando acceso a sesión:', error);
     return false;
   }
 };
 
 // Configurar manejadores de WebSocket
 export const setupSocketHandlers = (io: Server) => {
-  // Configurar handlers de juegos
-  const gameHandlers = new GameHandlers(io);
-  gameHandlers.initialize();
-  // Middleware de autenticación
+  // Middleware de autenticación global
   io.use(async (socket: AuthenticatedSocket, next) => {
-    const token = socket.handshake.auth['token'];
+    console.log('🔐 Middleware de autenticación WebSocket ejecutándose');
     
-    if (!token) {
-      return next(new Error('Token no proporcionado'));
-    }
+    try {
+      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+      console.log('🔑 Token en handshake:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+      
+      if (!token) {
+        console.log('❌ No se proporcionó token');
+        return next(new Error('Token no proporcionado'));
+      }
 
-    const isAuthenticated = await authenticateSocket(socket, token);
-    if (!isAuthenticated) {
-      return next(new Error('Token inválido'));
-    }
+      const isAuthenticated = await authenticateSocket(socket, token);
+      if (!isAuthenticated) {
+        console.log('❌ Falló la autenticación');
+        return next(new Error('Token inválido'));
+      }
 
-    next();
+      console.log('✅ Autenticación exitosa, continuando...');
+      console.log('🔍 Llamando next()...');
+      next();
+      console.log('🔍 next() ejecutado');
+    } catch (error) {
+      console.log('❌ Error en middleware de autenticación:', error);
+      next(new Error('Error de autenticación'));
+    }
   });
 
   // Conexión de socket
   io.on('connection', (socket: AuthenticatedSocket) => {
-    console.log(`🔌 Usuario conectado: ${socket.userId} (${socket.userRole})`);
+    console.log('🎯 HANDLER DE CONEXIÓN EJECUTÁNDOSE');
+    console.log('🔌 Socket ID:', socket.id);
+    console.log('🔌 Handshake auth:', socket.handshake.auth);
 
-    // Unirse a sesión
-    socket.on('join-session', async (sessionId: string) => {
+    // Unirse a sesión de juego
+    socket.on('joinGameSession', async (data: { sessionId: string; userId: string; userRole: string }) => {
       try {
-        const hasAccess = await verifySessionAccess(socket, sessionId);
-        if (!hasAccess) {
-          socket.emit('error', { message: 'No tienes permisos para esta sesión' });
+        const { sessionId, userId, userRole } = data;
+        
+        if (!sessionId || !userId || !userRole) {
+          socket.emit('gameError', 'Datos de sesión de juego requeridos');
           return;
         }
 
-        // Unirse al room de la sesión
-        socket.join(`session:${sessionId}`);
-        socket.sessionId = sessionId;
-
-        // Registrar conexión
-        if (!sessionConnections.has(sessionId)) {
-          sessionConnections.set(sessionId, new Set());
+        // Verificar que el userId coincida con el usuario autenticado
+        if (socket.userId !== userId) {
+          console.log('❌ UserId no coincide:', { socketUserId: socket.userId, requestUserId: userId });
+          socket.emit('gameError', 'Token de autenticación inválido');
+          return;
         }
-        sessionConnections.get(sessionId)!.add(socket.userId!);
+
+        // Unirse a la sala de juego
+        const roomName = `game-${sessionId}`;
+        await socket.join(roomName);
+
+        console.log(`🎮 Usuario ${userId} se unió a la sala de juego ${sessionId}`);
 
         // Notificar a otros participantes
-        socket.to(`session:${sessionId}`).emit('user-joined', {
-          userId: socket.userId,
-          userRole: socket.userRole,
-          timestamp: new Date().toISOString()
+        socket.to(roomName).emit('participantJoined', {
+          userId,
+          name: 'Usuario', // TODO: Obtener nombre real del usuario
+          role: userRole,
+          isConnected: true,
+          score: 0
         });
 
-        // Enviar estado actual del juego si existe
-        const gameState = activeGames.get(sessionId);
-        if (gameState) {
-          socket.emit('game-state', gameState);
-        }
+        // Obtener participantes conectados
+        const roomSockets = await io.in(roomName).fetchSockets();
+        const participants = roomSockets.map((s: any) => ({
+          userId: s.userId,
+          name: 'Usuario', // TODO: Obtener nombre real del usuario
+          role: s.userRole || 'child',
+          isConnected: true,
+          score: 0
+        }));
 
-        console.log(`👥 Usuario ${socket.userId} se unió a la sesión ${sessionId}`);
+        // Enviar estado inicial del juego
+        socket.emit('gameStateUpdate', {
+          isPlaying: false,
+          currentTurn: 'slp',
+          score: { slp: 0, child: 0 },
+          round: 1,
+          maxRounds: 10,
+          currentWord: null,
+          selectedAnswer: null,
+          isCorrect: null,
+          timeRemaining: 30,
+          isPaused: false,
+          participants
+        });
+
+        // Confirmar unión
+        socket.emit('joinedGameSession', {
+          sessionId,
+          userId,
+          userRole
+        });
 
       } catch (error) {
-        socket.emit('error', { message: 'Error al unirse a la sesión' });
+        console.error('Error uniéndose a sesión de juego:', error);
+        socket.emit('gameError', 'Error interno del servidor');
       }
     });
 
-    // Salir de sesión
-    socket.on('leave-session', (sessionId: string) => {
-      socket.leave(`session:${sessionId}`);
-      
-      // Remover de conexiones
-      const connections = sessionConnections.get(sessionId);
-      if (connections) {
-        connections.delete(socket.userId!);
-        if (connections.size === 0) {
-          sessionConnections.delete(sessionId);
-        }
-      }
-
-      // Notificar a otros participantes
-      socket.to(`session:${sessionId}`).emit('user-left', {
-        userId: socket.userId,
-        userRole: socket.userRole,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`👋 Usuario ${socket.userId} salió de la sesión ${sessionId}`);
-    });
-
-    // Iniciar juego
-    socket.on('start-game', async (data: { sessionId: string; gameType: string; level: number }) => {
+    // Procesar evento de juego
+    socket.on('gameEvent', async (data: { sessionId: string; event: any }) => {
       try {
-        const hasAccess = await verifySessionAccess(socket, data.sessionId);
-        if (!hasAccess || socket.userRole !== 'slp') {
-          socket.emit('error', { message: 'No tienes permisos para iniciar el juego' });
+        const { sessionId, event } = data;
+        
+        if (!sessionId || !event) {
+          socket.emit('gameError', 'Datos de evento de juego requeridos');
           return;
         }
 
-        const gameState: GameState = {
-          sessionId: data.sessionId,
-          gameType: data.gameType,
-          currentLevel: data.level,
-          score: 0,
-          accuracy: 0,
-          timeRemaining: 300, // 5 minutos
-          isActive: true
-        };
-
-        activeGames.set(data.sessionId, gameState);
-
-        // Notificar a todos los participantes
-        io.to(`session:${data.sessionId}`).emit('game-started', gameState);
-
-        console.log(`🎮 Juego iniciado en sesión ${data.sessionId}: ${data.gameType}`);
-
-      } catch (error) {
-        socket.emit('error', { message: 'Error al iniciar el juego' });
-      }
-    });
-
-    // Acción de juego
-    socket.on('game-action', (action: GameAction) => {
-      const gameState = activeGames.get(socket.sessionId!);
-      if (!gameState || !gameState.isActive) {
-        socket.emit('error', { message: 'No hay juego activo' });
-        return;
-      }
-
-      // Procesar acción según el tipo
-      switch (action.type) {
-        case 'correct-answer':
-          gameState.score += 10;
-          gameState.accuracy = ((gameState.accuracy * 0.9) + 100) / 2;
-          break;
-        case 'incorrect-answer':
-          gameState.accuracy = ((gameState.accuracy * 0.9) + 0) / 2;
-          break;
-        case 'level-complete':
-          gameState.currentLevel++;
-          gameState.score += 50;
-          break;
-        case 'time-update':
-          gameState.timeRemaining = action.data.timeRemaining;
-          break;
-      }
-
-      // Sincronizar con todos los participantes
-      io.to(`session:${socket.sessionId}`).emit('game-update', {
-        action,
-        gameState,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`🎯 Acción de juego: ${action.type} en sesión ${socket.sessionId}`);
-    });
-
-    // Finalizar juego
-    socket.on('end-game', async (data: { sessionId: string; finalScore: number; finalAccuracy: number }) => {
-      try {
-        const hasAccess = await verifySessionAccess(socket, data.sessionId);
-        if (!hasAccess || socket.userRole !== 'slp') {
-          socket.emit('error', { message: 'No tienes permisos para finalizar el juego' });
+        // Verificar que el usuario esté en la sala
+        const roomName = `game-${sessionId}`;
+        const rooms = Array.from(socket.rooms);
+        if (!rooms.includes(roomName)) {
+          socket.emit('gameError', 'No estás en esta sesión de juego');
           return;
         }
 
-        const gameState = activeGames.get(data.sessionId);
-        if (gameState) {
-          gameState.isActive = false;
-          gameState.score = data.finalScore;
-          gameState.accuracy = data.finalAccuracy;
+        // Agregar información del evento
+        event.sessionId = sessionId;
+        event.timestamp = Date.now();
 
-          // Actualizar sesión en la base de datos
-          await TherapySession.findByIdAndUpdate(data.sessionId, {
-            $inc: { 
-              gamesPlayed: 1,
-              totalScore: data.finalScore
-            },
-            $set: { 
-              lastGameAccuracy: data.finalAccuracy,
-              lastGameDate: new Date()
+        console.log(`🎮 Evento de juego recibido: ${event.type} en sesión ${sessionId}`);
+
+        // Manejar eventos específicos del juego
+        switch (event.type) {
+          case 'gameStart':
+            // Inicializar estado del juego
+            activeGames.set(sessionId, {
+              isPlaying: true,
+              currentTurn: 'slp',
+              score: { slp: 0, child: 0 },
+              round: 1,
+              maxRounds: 10,
+              currentWord: event.data.currentWord,
+              selectedAnswer: null,
+              isCorrect: null,
+              timeRemaining: 30,
+              isPaused: false,
+              participants: []
+            });
+            break;
+
+          case 'answerSelected':
+            // Procesar respuesta
+            const gameState = activeGames.get(sessionId);
+            if (gameState) {
+              const isCorrect = event.data.answer === gameState.currentWord?.word;
+              gameState.isCorrect = isCorrect;
+              gameState.selectedAnswer = event.data.answer;
+              
+              // Actualizar puntuación
+              if (isCorrect) {
+                if (gameState.currentTurn === 'slp') {
+                  gameState.score.slp += 10;
+                } else {
+                  gameState.score.child += 10;
+                }
+              }
+              
+              // Cambiar turno
+              gameState.currentTurn = gameState.currentTurn === 'slp' ? 'child' : 'slp';
+              
+              // Enviar estado actualizado
+              io.to(roomName).emit('gameStateUpdate', gameState);
             }
-          });
+            break;
 
-          // Notificar a todos los participantes
-          io.to(`session:${data.sessionId}`).emit('game-ended', {
-            finalScore: data.finalScore,
-            finalAccuracy: data.finalAccuracy,
-            timestamp: new Date().toISOString()
-          });
-
-          // Limpiar estado del juego después de un tiempo
-          setTimeout(() => {
-            activeGames.delete(data.sessionId);
-          }, 60000); // 1 minuto
-
-          console.log(`🏁 Juego finalizado en sesión ${data.sessionId}`);
+          case 'gameEnd':
+            // Finalizar juego
+            activeGames.delete(sessionId);
+            break;
         }
 
+        // Reenviar evento a todos los participantes de la sala
+        io.to(roomName).emit('gameEvent', event);
+
       } catch (error) {
-        socket.emit('error', { message: 'Error al finalizar el juego' });
+        console.error('Error procesando evento de juego:', error);
+        socket.emit('gameError', 'Error interno del servidor');
       }
     });
 
-    // Chat en tiempo real
-    socket.on('chat-message', (data: { sessionId: string; message: string; type: 'text' | 'system' }) => {
-      const message = {
-        userId: socket.userId,
-        userRole: socket.userRole,
-        message: data.message,
-        type: data.type,
-        timestamp: new Date().toISOString()
-      };
+    // Solicitar estado del juego
+    socket.on('requestGameState', async (data: { sessionId: string }) => {
+      try {
+        const { sessionId } = data;
+        
+        if (!sessionId) {
+          socket.emit('gameError', 'ID de sesión requerido');
+          return;
+        }
 
-      // Enviar a todos los participantes de la sesión
-      io.to(`session:${data.sessionId}`).emit('chat-message', message);
+        // Verificar que el usuario esté en la sala
+        const roomName = `game-${sessionId}`;
+        const rooms = Array.from(socket.rooms);
+        if (!rooms.includes(roomName)) {
+          socket.emit('gameError', 'No estás en esta sesión de juego');
+          return;
+        }
 
-      console.log(`💬 Mensaje de chat en sesión ${data.sessionId}: ${data.message}`);
-    });
+        // Obtener participantes conectados
+        const roomSockets = await io.in(roomName).fetchSockets();
+        const participants = roomSockets.map((s: any) => ({
+          userId: s.userId,
+          name: 'Usuario', // TODO: Obtener nombre real del usuario
+          role: s.userRole || 'child',
+          isConnected: true,
+          score: 0
+        }));
 
-    // Notificaciones de estado de sesión
-    socket.on('session-status', (data: { sessionId: string; status: string; notes?: string }) => {
-      if (socket.userRole !== 'slp') {
-        socket.emit('error', { message: 'Solo los SLP pueden cambiar el estado de la sesión' });
-        return;
+        // Enviar estado actual
+        socket.emit('gameStateUpdate', {
+          isPlaying: false,
+          currentTurn: 'slp',
+          score: { slp: 0, child: 0 },
+          round: 1,
+          maxRounds: 10,
+          currentWord: null,
+          selectedAnswer: null,
+          isCorrect: null,
+          timeRemaining: 30,
+          isPaused: false,
+          participants
+        });
+
+      } catch (error) {
+        console.error('Error obteniendo estado del juego:', error);
+        socket.emit('gameError', 'Error interno del servidor');
       }
-
-      const statusUpdate = {
-        status: data.status,
-        notes: data.notes,
-        updatedBy: socket.userId,
-        timestamp: new Date().toISOString()
-      };
-
-      // Enviar a todos los participantes
-      io.to(`session:${data.sessionId}`).emit('session-status-update', statusUpdate);
-
-      console.log(`📊 Estado de sesión actualizado: ${data.status} en sesión ${data.sessionId}`);
-    });
-
-    // Ping para mantener conexión
-    socket.on('ping', () => {
-      socket.emit('pong', { timestamp: new Date().toISOString() });
     });
 
     // Desconexión
     socket.on('disconnect', () => {
-      console.log(`🔌 Usuario desconectado: ${socket.userId}`);
-
-      // Limpiar conexiones si el usuario estaba en una sesión
-      if (socket.sessionId) {
-        const connections = sessionConnections.get(socket.sessionId);
-        if (connections) {
-          connections.delete(socket.userId!);
-          if (connections.size === 0) {
-            sessionConnections.delete(socket.sessionId);
-          }
+      console.log(`🔌 Usuario desconectado: ${socket.userId}, razón: ${socket.disconnected ? 'desconectado' : 'desconectado por servidor'}`);
+      
+      // Limpiar conexiones de sesión
+      for (const [sessionId, connections] of Array.from(sessionConnections.entries())) {
+        connections.delete(socket.id);
+        if (connections.size === 0) {
+          sessionConnections.delete(sessionId);
         }
-
-        // Notificar a otros participantes
-        socket.to(`session:${socket.sessionId}`).emit('user-disconnected', {
-          userId: socket.userId,
-          userRole: socket.userRole,
-          timestamp: new Date().toISOString()
-        });
       }
     });
   });
-
-  // Función para obtener estadísticas de conexiones
-  const getConnectionStats = () => {
-    return {
-      totalConnections: io.engine.clientsCount,
-      activeSessions: sessionConnections.size,
-      activeGames: activeGames.size,
-      sessionConnections: Object.fromEntries(
-        Array.from(sessionConnections.entries()).map(([sessionId, connections]) => [
-          sessionId,
-          connections.size
-        ])
-      )
-    };
-  };
-
-  // Endpoint para obtener estadísticas (solo para desarrollo)
-  if (process.env['NODE_ENV'] === 'development') {
-    io.on('get-stats', () => {
-      io.emit('connection-stats', getConnectionStats());
-    });
-  }
 
   console.log('🔌 WebSocket handlers configurados');
 };

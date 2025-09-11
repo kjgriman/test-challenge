@@ -55,20 +55,22 @@ var videoRooms_1 = require("./routes/videoRooms");
 var evaluations_1 = require("./routes/evaluations");
 var notifications_1 = require("./routes/notifications");
 var password_1 = require("./routes/password");
+var games_1 = require("./routes/games");
 var socketHandlers_1 = require("./sockets/socketHandlers");
 var videoSocketHandler_1 = require("./sockets/videoSocketHandler");
 var videoRoomHandlers_1 = require("./sockets/videoRoomHandlers");
+var gameSocketHandler_1 = require("./sockets/gameSocketHandler");
 var errorHandler_1 = require("./middleware/errorHandler");
 var rateLimiter_1 = require("./middleware/rateLimiter");
 // Cargar variables de entorno
 dotenv.config();
 // Configuración del servidor
 var PORT = process.env.PORT || 3001;
-var FRONTEND_URL = process.env.FRONTEND_URL || 'https://localhost:5173';
+var FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 var VERCEL_URL = process.env.VERCEL_URL;
 var corsOrigin = VERCEL_URL ? "https://".concat(VERCEL_URL) : FRONTEND_URL;
 var socketCorsOrigin = VERCEL_URL ? "https://".concat(VERCEL_URL) : FRONTEND_URL;
-var USE_HTTPS = process.env.USE_HTTPS === 'true';
+var USE_HTTPS = true; // Habilitar HTTPS para desarrollo local
 console.log('📋 Environment Variables:', {
     NODE_ENV: process.env.NODE_ENV,
     PORT: PORT,
@@ -131,6 +133,7 @@ app.use('/api/video-rooms', videoRooms_1.default);
 app.use('/api/evaluations', evaluations_1.default);
 app.use('/api/notifications', notifications_1.default);
 app.use('/api/password', password_1.default);
+app.use('/api/games', games_1.default);
 // Middleware de manejo de errores
 app.use(errorHandler_1.errorHandler);
 // Configuración de MongoDB
@@ -201,6 +204,8 @@ console.log('🔌 WebSocket CORS Configuration:', {
 (0, videoRoomHandlers_1.setupVideoRoomHandlers)(io);
 // Configurar VideoSocketHandler
 var videoSocketHandler = new videoSocketHandler_1.VideoSocketHandler(io);
+// Configurar GameSocketHandler
+var gameSocketHandler = new gameSocketHandler_1.GameSocketHandler(io);
 console.log('🔌 WebSocket handlers configurados');
 // Iniciar servidor
 server.listen(PORT, '0.0.0.0', function () {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 
-const BACKEND_URL = "https://test-challenge-production.up.railway.app/api";
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 export interface Notification {
   _id: string;
@@ -44,7 +44,7 @@ export const useNotifications = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${BACKEND_URL}/api/notifications`, {
+      const response = await fetch(`${BACKEND_URL}/notifications`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -70,7 +70,7 @@ export const useNotifications = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notifications/stats`, {
+      const response = await fetch(`${BACKEND_URL}/notifications/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -94,7 +94,7 @@ export const useNotifications = () => {
   // Marcar como leída
   const markAsRead = async (notificationId: string) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`${BACKEND_URL}/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -121,7 +121,7 @@ export const useNotifications = () => {
   // Marcar como no leída
   const markAsUnread = async (notificationId: string) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notifications/${notificationId}/unread`, {
+      const response = await fetch(`${BACKEND_URL}/notifications/${notificationId}/unread`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -148,7 +148,7 @@ export const useNotifications = () => {
   // Eliminar notificación
   const deleteNotification = async (notificationId: string) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notifications/${notificationId}`, {
+      const response = await fetch(`${BACKEND_URL}/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -169,7 +169,7 @@ export const useNotifications = () => {
   // Marcar todas como leídas
   const markAllAsRead = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notifications/mark-all-read`, {
+      const response = await fetch(`${BACKEND_URL}/notifications/mark-all-read`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

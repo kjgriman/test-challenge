@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 // Configuración de rate limiting para diferentes endpoints
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env['NODE_ENV'] === 'development' ? 1000 : 100, // Más permisivo en desarrollo
+  max: process.env['NODE_ENV'] === 'development' ? 10000 : 100, // Mucho más permisivo en desarrollo
   message: {
     success: false,
     error: {
@@ -49,7 +49,7 @@ export const rateLimiter = rateLimit({
 // Rate limiter más estricto para autenticación
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env['NODE_ENV'] === 'development' ? 50 : 5, // Más permisivo en desarrollo
+  max: process.env['NODE_ENV'] === 'development' ? 500 : 5, // Mucho más permisivo en desarrollo
   message: {
     success: false,
     error: {
@@ -252,4 +252,31 @@ export const logRateLimitAttempt = (req: Request, endpoint: string) => {
     userAgent: req.get('User-Agent')
   });
 };
+
+// Función para limpiar rate limit en desarrollo
+export const clearRateLimit = (req: Request) => {
+  if (process.env['NODE_ENV'] === 'development') {
+    console.log('🧹 Limpiando rate limit en desarrollo para IP:', req.ip);
+    // En desarrollo, podemos limpiar el rate limit
+    // Esto es útil cuando React hace doble renderizado
+  }
+};
+
+// Rate limiter especial para desarrollo que es más permisivo
+export const devRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 1000, // 1000 requests por minuto en desarrollo
+  message: {
+    success: false,
+    error: {
+      message: 'Rate limit excedido en desarrollo',
+      code: 'DEV_RATE_LIMIT_EXCEEDED',
+      timestamp: new Date().toISOString()
+    }
+  },
+  skip: (req: Request) => {
+    // Solo aplicar en desarrollo
+    return process.env['NODE_ENV'] !== 'development';
+  }
+});
 

@@ -284,7 +284,8 @@ const VideoRoomCall: React.FC<VideoRoomCallProps> = ({
     // Importar Socket.IO dinámicamente
     import('socket.io-client').then(({ io }) => {
       const socket = io(
-        "https://test-challenge-production.up.railway.app/api",
+        // "https://test-challenge-production.up.railway.app/api",
+        `${import.meta.env.VITE_API_URL}`,
         {
           auth: { token },
           transports: ["websocket", "polling"],

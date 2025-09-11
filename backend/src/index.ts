@@ -18,9 +18,11 @@ import videoRoomRoutes from './routes/videoRooms';
 import evaluationRoutes from './routes/evaluations';
 import notificationRoutes from './routes/notifications';
 import passwordRoutes from './routes/password';
+import gameRoutes from './routes/games';
 import { setupSocketHandlers } from './sockets/socketHandlers';
 import { VideoSocketHandler } from './sockets/videoSocketHandler';
 import { setupVideoRoomHandlers } from './sockets/videoRoomHandlers';
+import { GameSocketHandler } from './sockets/gameSocketHandler';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 
@@ -33,7 +35,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const VERCEL_URL = process.env.VERCEL_URL;
 const corsOrigin = VERCEL_URL ? `https://${VERCEL_URL}` : FRONTEND_URL;
 const socketCorsOrigin = VERCEL_URL ? `https://${VERCEL_URL}` : FRONTEND_URL;
-const USE_HTTPS = false; // Deshabilitar HTTPS para desarrollo local
+const USE_HTTPS = true; // Habilitar HTTPS para desarrollo local
 
 console.log('📋 Environment Variables:', {
   NODE_ENV: process.env.NODE_ENV,
@@ -104,6 +106,7 @@ app.use('/api/video-rooms', videoRoomRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/password', passwordRoutes);
+app.use('/api/games', gameRoutes);
 
 // Middleware de manejo de errores
 app.use(errorHandler);
@@ -169,6 +172,9 @@ setupVideoRoomHandlers(io);
 
 // Configurar VideoSocketHandler
 const videoSocketHandler = new VideoSocketHandler(io);
+
+// Configurar GameSocketHandler
+const gameSocketHandler = new GameSocketHandler(io);
 
 console.log('🔌 WebSocket handlers configurados');
 
