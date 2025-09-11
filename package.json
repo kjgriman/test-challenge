@@ -1,16 +1,19 @@
 {
   "name": "speech-therapy-platform",
   "version": "1.0.0",
-  "description": "Plataforma virtual de terapia del habla",
+  "description": "Plataforma completa de terapia del habla virtual",
   "private": true,
   "scripts": {
-    "dev": "cd backend && npm run dev",
-    "start": "cd backend && npm start",
-    "frontend:build": "cd frontend && npm run build",
-    "frontend:dev": "cd frontend && npm run dev",
-    "frontend:install": "cd frontend && npm install"
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "start": "cd frontend && npm run preview"
   },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
