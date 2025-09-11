@@ -43,7 +43,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: false, // Deshabilitar sourcemaps en producción
     rollupOptions: {
       output: {
         manualChunks: {
@@ -57,7 +57,14 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000, // Aumentar límite para Phaser
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Eliminar console.log en producción
+        drop_debugger: true,
+      },
+    },
   },
   optimizeDeps: {
     include: [
@@ -83,6 +90,7 @@ export default defineConfig({
   },
   define: {
     global: "globalThis",
+    __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
   },
   test: {
     globals: true,
