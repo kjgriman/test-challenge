@@ -5,16 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "echo '🔨 Starting build process...' && npm run build:tsc && npm run build:vite && echo '🎉 Build completed successfully!'",
-    "build:tsc": "echo '📝 TypeScript compilation...' && tsc --noEmit && echo '✅ TypeScript OK'",
-    "build:vite": "echo '🚀 Vite build...' && vite build && echo '✅ Vite build OK'",
+    "build": "echo '🔨 Starting build process...' && tsc --noEmit && echo '✅ TypeScript OK' && vite build && echo '🎉 Build completed successfully!'",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "vercel-build": "echo '🔍 Environment check...' && echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && echo 'Working directory:' && pwd && echo '📦 Installing dependencies...' && npm install && echo '🔨 Starting build...' && npm run build",
+    "vercel-build": "npm run build",
     "postinstall": "echo 'Dependencies installed successfully'"
   },
   "dependencies": {
